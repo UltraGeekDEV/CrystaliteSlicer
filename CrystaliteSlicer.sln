@@ -5,6 +5,8 @@ VisualStudioVersion = 17.8.34330.188
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CrystaliteSlicer", "CrystaliteSlicer\CrystaliteSlicer.csproj", "{54FC3BFD-8938-4B36-9E0E-070FCA868C0E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Models", "Models\Models.csproj", "{A71F9472-7B97-4542-858E-6716BF75F429}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{54FC3BFD-8938-4B36-9E0E-070FCA868C0E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{54FC3BFD-8938-4B36-9E0E-070FCA868C0E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{54FC3BFD-8938-4B36-9E0E-070FCA868C0E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A71F9472-7B97-4542-858E-6716BF75F429}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A71F9472-7B97-4542-858E-6716BF75F429}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A71F9472-7B97-4542-858E-6716BF75F429}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A71F9472-7B97-4542-858E-6716BF75F429}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

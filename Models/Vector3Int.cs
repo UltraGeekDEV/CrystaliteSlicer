@@ -13,8 +13,6 @@ namespace Models
         public int Y { get; set; }
         public int Z { get; set; }
 
-        public int thickness { get; set; }
-
         public override int GetHashCode()
         {
             unchecked

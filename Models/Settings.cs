@@ -22,22 +22,23 @@ namespace Models
                 return instance;
             } set => instance = value;}
 
-        public Vector3 Resolution { get => resolution; set => resolution = value; }
-        public Vector3 PrintVolume { get => printVolume; set => printVolume = value; }
-        public Vector3 Rotation { get => rotation; set => rotation = value; }
-        public Vector3 Scale { get => scale; set => scale = value; }
-        public Vector3 Offset { get => offset; set => offset = value; }
-        public float NozzleDiameter { get => nozzleDiameter; set => nozzleDiameter = value; }
-        public float MaxSlope { get => maxSlope; set => maxSlope = value; }
-        public float MaxLayerHeight { get => maxLayerHeight; set => maxLayerHeight = value; }
-        public float HotendTemp { get => hotendTemp; set => hotendTemp = value; }
-        public float BedTemp { get => bedTemp; set => bedTemp = value; }
-        public float FanSpeed { get => fanSpeed; set => fanSpeed = value; }
-        public float ExtrusionMult { get => extrusionMult; set => extrusionMult = value; }
-        public float OuterWallSpeed { get => outerWallSpeed; set => outerWallSpeed = value; }
-        public float InnerWallSpeed { get => innerWallSpeed; set => innerWallSpeed = value; }
-        public float InfillSpeed { get => infillSpeed; set => infillSpeed = value; }
-        public float InfillDensity { get => infillDensity; set => infillDensity = value; }
+        //Static getter
+        public static Vector3 Resolution { get =>   Instance.resolution; set =>      Instance.resolution = value; }
+        public static Vector3 PrintVolume { get =>  Instance.printVolume; set =>     Instance.printVolume = value; }
+        public static Vector3 Rotation { get =>     Instance.rotation; set =>        Instance.rotation = value; }
+        public static Vector3 Scale { get =>        Instance.scale; set =>           Instance.scale = value; }
+        public static Vector3 Offset { get =>       Instance.offset; set =>          Instance.offset = value; }
+        public static float NozzleDiameter { get => Instance.nozzleDiameter; set =>  Instance.nozzleDiameter = value; }
+        public static float MaxSlope { get =>       Instance.maxSlope; set =>        Instance.maxSlope = value; }
+        public static float MaxLayerHeight { get => Instance.maxLayerHeight; set =>  Instance.maxLayerHeight = value; }
+        public static float HotendTemp { get =>     Instance.hotendTemp; set =>      Instance.hotendTemp = value; }
+        public static float BedTemp { get =>        Instance.bedTemp; set =>         Instance.bedTemp = value; }
+        public static float FanSpeed { get =>       Instance.fanSpeed; set =>        Instance.fanSpeed = value; }
+        public static float ExtrusionMult { get =>  Instance.extrusionMult; set =>   Instance.extrusionMult = value; }
+        public static float OuterWallSpeed { get => Instance.outerWallSpeed; set =>  Instance.outerWallSpeed = value; }
+        public static float InnerWallSpeed { get => Instance.innerWallSpeed; set =>  Instance.innerWallSpeed = value; }
+        public static float InfillSpeed { get =>    Instance.infillSpeed; set =>     Instance.infillSpeed = value; }
+        public static float InfillDensity { get =>  Instance.infillDensity; set =>   Instance.infillDensity = value; }
 
         private Vector3 resolution;
         private Vector3 printVolume;

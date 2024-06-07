@@ -29,16 +29,17 @@ namespace CrystaliteSlicer.MeshImport
             return this;
         }
 
-        public IImportMesh ApplyTransform(Vector3 eulerAngles, Vector3 scale, Vector3 offset)
+        public IImportMesh ApplyTransform()
         {
+            var eulerAngles = Settings.Rotation;
             eulerAngles *= MathF.PI / 180.0f;
             var rotQuaternion = System.Numerics.Quaternion.CreateFromYawPitchRoll(eulerAngles.X,eulerAngles.Y,eulerAngles.Z);
             transformedMesh = originalMesh.Select(x =>
             {
                 var tri = x.Copy();
                 tri.Rotate(rotQuaternion);
-                tri.Scale(scale);
-                tri.Offset(offset);
+                tri.Scale(Settings.Scale);
+                tri.Offset(Settings.Offset);
                 return tri;
             }).ToList();
             return this;

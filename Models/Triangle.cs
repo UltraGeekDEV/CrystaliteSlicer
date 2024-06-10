@@ -26,6 +26,10 @@ namespace Models
         {
             return new Triangle(a, b, c);
         }
+        public Vector3 GetNormal()
+        {
+            return Vector3.Normalize(Vector3.Cross(b - a, c - a));
+        }
         protected Vector3Int GetID(Vector3 vec, Vector3 resolution)
         {
             Vector3 scaled = new Vector3(

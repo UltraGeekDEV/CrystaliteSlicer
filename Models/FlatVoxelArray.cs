@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,8 +10,20 @@ namespace Models
 {
     public class FlatVoxelArray : IVoxelCollection
     {
-        public VoxelData this[Vector3Int pos] { get => voxels[pos.X+pos.Y*size.Y+pos.Z*Size.Y*Size.Z]; set => voxels[pos.X + pos.Y * size.Y + pos.Z * Size.Y * Size.Z] = value; }
-        public VoxelData this[int x, int y, int z] { get => voxels[x + y * size.Y + z * Size.Y * Size.Z]; set => voxels[x + y * size.Y + z * Size.Y * Size.Z] = value; }
+        public VoxelData this[Vector3Int pos] { get {
+                if (InBounds(pos))
+                {
+                    return voxels[pos.X + pos.Y * size.X + pos.Z * Size.X * Size.Y];
+                }
+                return new VoxelData() { depth = -1};
+            }
+            set {
+                if (InBounds(pos)) {
+                    voxels[pos.X + pos.Y * size.X + pos.Z * Size.X * Size.Y] = value;
+                } 
+            }
+        }
+        public VoxelData this[int x, int y, int z] { get => voxels[x + y * size.X + z * Size.X * Size.Y]; set => voxels[x + y * size.X + z * Size.X * Size.Y] = value; }
         public Vector3Int Size { get => size; set => size = value; }
 
         private VoxelData[] voxels;
@@ -20,8 +34,7 @@ namespace Models
             this.size = size;
             voxels = new VoxelData[size.X * size.Y * size.Z];
         }
-
-        public bool Contains(Vector3Int id)
+        public bool InBounds(Vector3Int id)
         {
             bool ret = true;
             ret &= id.X >= 0;
@@ -30,27 +43,26 @@ namespace Models
             ret &= id.X < size.X;
             ret &= id.Y < size.Y;
             ret &= id.Z < size.Z;
-            ret &= this[id].depth != -1;
             return ret;
+        }
+        public bool Contains(Vector3Int id)
+        {
+            return InBounds(id) && this[id].depth != -1;
         }
 
         public IEnumerable<Vector3Int> GetAllActiveVoxels()
         {
-            var ret = new List<Vector3Int>();
-            for (int i = 0; i < size.X; i++)
+            var ret = new ConcurrentQueue<Vector3Int>();
+
+            var points = Enumerable.Range(0, Size.X).AsParallel().SelectMany(x => Enumerable.Range(0, Size.Y).SelectMany(y => Enumerable.Range(0, Size.Z).Select(z => new Vector3Int(x, y, z))));
+
+            points.ForAll(check =>
             {
-                for (int j = 0; j < size.Y; j++)
+                if (Contains(check))
                 {
-                    for (int z = 0; z < size.Z; z++)
-                    {
-                        Vector3Int check = new Vector3Int(i, j, z);
-                        if (Contains(check))
-                        {
-                            ret.Add(check);
-                        }
-                    }
+                    ret.Enqueue(check);
                 }
-            }
+            });
             return ret;
         }
     }

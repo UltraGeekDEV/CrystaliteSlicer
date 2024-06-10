@@ -3,6 +3,7 @@ using Models;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Text;
@@ -19,52 +20,53 @@ namespace CrystaliteSlicer.Voxelize
             var mesh = triangles.ToList();
             mesh.AsParallel().ForAll(x =>
             {
-                x.A = GetID(x.a);
-                x.B = GetID(x.b);
-                x.C = GetID(x.c);
+                x.A = Utils.GetID(x.a);
+                x.B = Utils.GetID(x.b);
+                x.C = Utils.GetID(x.c);
             });
             var lowerLeft = mesh.First().A;
             mesh.ForEach(x =>
             {
-                lowerLeft = CompareAndSwap(lowerLeft, x.A, (a, b) => a > b);
-                lowerLeft = CompareAndSwap(lowerLeft, x.B, (a, b) => a > b);
-                lowerLeft = CompareAndSwap(lowerLeft, x.C, (a, b) => a > b);
+                lowerLeft = Utils.CompareAndSwap(lowerLeft, x.A, (a, b) => a > b);
+                lowerLeft = Utils.CompareAndSwap(lowerLeft, x.B, (a, b) => a > b);
+                lowerLeft = Utils.CompareAndSwap(lowerLeft, x.C, (a, b) => a > b);
             });
             var upperRight = mesh.First().A;
             mesh.ForEach(x =>
             {
-                lowerLeft = CompareAndSwap(lowerLeft, x.A, (a, b) => a < b);
-                lowerLeft = CompareAndSwap(lowerLeft, x.B, (a, b) => a < b);
-                lowerLeft = CompareAndSwap(lowerLeft, x.C, (a, b) => a < b);
+                upperRight = Utils.CompareAndSwap(upperRight, x.A, (a, b) => a < b);
+                upperRight = Utils.CompareAndSwap(upperRight, x.B, (a, b) => a < b);
+                upperRight = Utils.CompareAndSwap(upperRight, x.C, (a, b) => a < b);
             });
+
+            upperRight += Vector3Int.One;
 
             IVoxelCollection voxels = new FlatVoxelArray(upperRight-lowerLeft);
 
             mesh.AsParallel().SelectMany(x => x.GetVoxelsBresenham()).ForAll(x => voxels[x-lowerLeft] = new VoxelData() { depth = shellVoxelValue });
 
-            var tasks = Enumerable.Range(0, voxels.Size.X).Select(x=>Task.Run(() => FillVoxelMesh(voxels,x)));
+            var tasks = Enumerable.Range(0, voxels.Size.X).Select(x => Task.Run(() => FillVoxelMesh(voxels, x)));
             Task.WaitAll(tasks.ToArray());
 
-            var corrosionBag = new ConcurrentBag<Vector3Int>(voxels.GetAllActiveVoxels().Where(x=> voxels[x].depth == fillVoxelValue && HasOpenFace(x,voxels)));
-            foreach (var item in corrosionBag.ToList())
-            {
-                voxels[item] = new VoxelData() { depth = -1 };
-            }
+            var corrosionBag = new ConcurrentQueue<Vector3Int>(voxels.GetAllActiveVoxels().AsParallel().Where(x => voxels[x].depth == fillVoxelValue && HasOpenFace(x, voxels)));
+            corrosionBag.AsParallel().ForAll(x => voxels[x] = new VoxelData() { depth = -1 });
             tasks = Enumerable.Range(0, Environment.ProcessorCount).Select(x => Task.Run(() =>
             {
                 while (!corrosionBag.IsEmpty)
                 {
-                    if(corrosionBag.TryTake(out var pos))
+                    if (corrosionBag.TryDequeue(out var pos))
                     {
                         var neighbours = GetNeighbours(pos, voxels);
                         foreach (var check in neighbours)
                         {
                             voxels[check] = new VoxelData() { depth = -1 };
-                            corrosionBag.Add(check);
+                            corrosionBag.Enqueue(check);
                         }
                     }
                 }
             }));
+
+            Task.WaitAll(tasks.ToArray());
 
             return voxels;
         }
@@ -74,7 +76,7 @@ namespace CrystaliteSlicer.Voxelize
         }
         private IEnumerable<Vector3Int> GetNeighbours(Vector3Int check, IVoxelCollection voxels)
         {
-            return LUTS.faceOffsets.Select(x => x+check).Where(voxels.Contains);
+            return LUTS.faceOffsets.Select(x => x+check).Where(x=>voxels.Contains(x) && voxels[x].depth == fillVoxelValue && LUTS.faceOffsets.Count(x => !voxels.Contains(x + check)) > 1);
         }
         private void FillVoxelMesh(IVoxelCollection voxels,int x)
         {
@@ -82,32 +84,12 @@ namespace CrystaliteSlicer.Voxelize
             {
                 for (int z = 0; z < voxels.Size.Z; z++)
                 {
-                    if (voxels[x,y,z].depth != 1)
+                    if (voxels[x,y,z].depth != shellVoxelValue)
                     {
                         voxels[x, y, z] = new VoxelData() { depth = fillVoxelValue };
                     }
                 }
             }
-        }
-        private Vector3Int CompareAndSwap(Vector3Int A,Vector3Int B,Func<int, int, bool> predicate)
-        {
-            if (predicate(A.X, B.X))
-            {
-                A.X = B.X;
-            }
-            if(predicate(A.Y, B.Y))
-            { 
-                A.Y = B.Y; 
-            }
-            if(predicate(A.Z, B.Z))
-            {
-                A.Z = B.Z;
-            }
-            return A;
-        }
-        private Vector3Int GetID(Vector3 pos)
-        {
-            return pos / Settings.Instance.Resolution;
         }
     }
 }

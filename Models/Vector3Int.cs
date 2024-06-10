@@ -9,6 +9,22 @@ namespace Models
 {
     public struct Vector3Int : IEquatable<Vector3Int>
     {
+        public static Vector3Int One
+        {
+            get
+            {
+                return new Vector3Int(1, 1, 1);
+            }
+        }
+
+        public static Vector3Int Zero
+        {
+            get
+            {
+                return new Vector3Int(0, 0, 0);
+            }
+        }
+
         public int X { get; set; }
         public int Y { get; set; }
         public int Z { get; set; }

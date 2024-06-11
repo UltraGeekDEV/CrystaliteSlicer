@@ -11,14 +11,14 @@ namespace Models
     public class FlatVoxelArray : IVoxelCollection
     {
         public VoxelData this[Vector3Int pos] { get {
-                if (InBounds(pos))
+                if (ValidID(pos))
                 {
                     return voxels[pos.X + pos.Y * size.X + pos.Z * Size.X * Size.Y];
                 }
                 return new VoxelData() { depth = -1};
             }
             set {
-                if (InBounds(pos)) {
+                if (ValidID(pos)) {
                     voxels[pos.X + pos.Y * size.X + pos.Z * Size.X * Size.Y] = value;
                 } 
             }
@@ -34,7 +34,7 @@ namespace Models
             this.size = size;
             voxels = new VoxelData[size.X * size.Y * size.Z];
         }
-        public bool InBounds(Vector3Int id)
+        public bool ValidID(Vector3Int id)
         {
             bool ret = true;
             ret &= id.X >= 0;
@@ -47,7 +47,7 @@ namespace Models
         }
         public bool Contains(Vector3Int id)
         {
-            return InBounds(id) && this[id].depth != -1;
+            return ValidID(id) && this[id].depth != -1;
         }
 
         public IEnumerable<Vector3Int> GetAllActiveVoxels()

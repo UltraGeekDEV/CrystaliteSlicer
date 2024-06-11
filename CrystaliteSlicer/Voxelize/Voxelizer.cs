@@ -1,5 +1,6 @@
 ﻿using CrystaliteSlicer.MeshImport;
 using Models;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -43,31 +44,39 @@ namespace CrystaliteSlicer.Voxelize
 
             IVoxelCollection voxels = new FlatVoxelArray(upperRight-lowerLeft);
 
-            mesh.AsParallel().SelectMany(x => x.GetVoxelsBresenham()).ForAll(x => voxels[x-lowerLeft] = new VoxelData() { depth = shellVoxelValue });
+            mesh.AsParallel().Where(x => x.GetNormal().Z < -0.01f).Select(tri => (tri.GetVoxelsBresenham(), tri)).ForAll(x =>
+            {
+                var normDir = x.tri.GetNormal().Z;
+                foreach (var item in x.Item1)
+                {
+                    voxels[item - lowerLeft] = new VoxelData() { depth = shellVoxelValue, normZ = normDir };
+                }
+            });
+
+            mesh.AsParallel().Where(x=> Math.Abs(x.GetNormal().Z) <= 0.01f).Select(tri => (tri.GetVoxelsBresenham(),tri)).ForAll(x =>
+            {
+                var normDir = x.tri.GetNormal().Z;
+                foreach (var item in x.Item1)
+                {
+                    voxels[item - lowerLeft] = new VoxelData() { depth = shellVoxelValue, normZ = normDir };
+                }
+            });
+            
+            mesh.AsParallel().Where(x => x.GetNormal().Z > 0.01f).Select(tri => (tri.GetVoxelsBresenham(), tri)).ForAll(x =>
+            {
+                var normDir = x.tri.GetNormal().Z;
+                foreach (var item in x.Item1)
+                {
+                    voxels[item - lowerLeft] = new VoxelData() { depth = shellVoxelValue, normZ = normDir };
+                }
+            });
 
             var tasks = Enumerable.Range(0, voxels.Size.X).Select(x => Task.Run(() => FillVoxelMesh(voxels, x)));
             Task.WaitAll(tasks.ToArray());
-
-            var corrosionBag = new ConcurrentQueue<Vector3Int>(voxels.GetAllActiveVoxels().AsParallel().Where(x => voxels[x].depth == fillVoxelValue && HasOpenFace(x, voxels)));
-            corrosionBag.AsParallel().ForAll(x => voxels[x] = new VoxelData() { depth = -1 });
-            tasks = Enumerable.Range(0, Environment.ProcessorCount).Select(x => Task.Run(() =>
-            {
-                while (!corrosionBag.IsEmpty)
-                {
-                    if (corrosionBag.TryDequeue(out var pos))
-                    {
-                        var neighbours = GetNeighbours(pos, voxels);
-                        foreach (var check in neighbours)
-                        {
-                            voxels[check] = new VoxelData() { depth = -1 };
-                            corrosionBag.Enqueue(check);
-                        }
-                    }
-                }
-            }));
-
+            tasks = Enumerable.Range(0, voxels.Size.X).Select(x => Task.Run(() => RemoveExtra(voxels, x)));
             Task.WaitAll(tasks.ToArray());
-
+            tasks = Enumerable.Range(0, voxels.Size.X).Select(x => Task.Run(() => RemoveExtra(voxels, x)));
+            Task.WaitAll(tasks.ToArray());
             return voxels;
         }
         private bool HasOpenFace(Vector3Int check,IVoxelCollection voxels)
@@ -82,11 +91,74 @@ namespace CrystaliteSlicer.Voxelize
         {
             for (int y = 0; y < voxels.Size.Y; y++)
             {
+                bool draw = false;
+                bool remainsInShell = false;
+                bool enterShell = false;
                 for (int z = 0; z < voxels.Size.Z; z++)
                 {
-                    if (voxels[x,y,z].depth != shellVoxelValue)
+                    if (voxels[x, y, z].depth == shellVoxelValue)
                     {
-                        voxels[x, y, z] = new VoxelData() { depth = fillVoxelValue };
+                        if (Math.Abs(voxels[x,y,z].normZ) >= 0.01f)
+                        {
+                            draw = voxels[x, y, z].normZ < 0;
+                        }
+                    }
+                    else
+                    {
+                        if (draw)
+                        {
+                            voxels[x, y, z] = new VoxelData() { depth = fillVoxelValue };
+                        }
+                        else{
+                            voxels[x, y, z] = new VoxelData() { depth = -1 };
+                        }
+                    }
+                }
+                for (int z = voxels.Size.Z-1; z >= 0; z--)
+                {
+                    if (voxels[x, y, z].depth == shellVoxelValue)
+                    {
+                        if (Math.Abs(voxels[x, y, z].normZ) >= 0.01f)
+                        {
+                            draw = voxels[x, y, z].normZ > 0;
+                        }
+                    }
+                    else
+                    {
+                        if (draw)
+                        {
+                            voxels[x, y, z] = new VoxelData() { depth = fillVoxelValue };
+                        }
+                        else
+                        {
+                            //voxels[x, y, z] = new VoxelData() { depth = -1 };
+                        }
+                    }
+                }
+            }
+        }
+
+        private void RemoveExtra(IVoxelCollection voxels, int x)
+        {
+            for (int y = 0; y < voxels.Size.Y; y++)
+            {
+                for (int z = voxels.Size.Z - 1; z >= 0; z--)
+                {
+                    if (voxels[x, y, z].depth != shellVoxelValue)
+                    {
+                        var check = new Vector3Int(x, y, z);
+                        var depths = LUTS.flatNeighbours.Select(x=>x+check).Where(voxels.ValidID).Select(x => voxels[x].depth).ToList();
+                        var fillCount = depths.Count(x=>x==fillVoxelValue);
+                        var airCount = depths.Count(x=>x==-1);
+
+                        if (fillCount > airCount)
+                        {
+                            voxels[x, y, z] = voxels[x, y, z] = new VoxelData() { depth = fillVoxelValue };
+                        }
+                        else
+                        {
+                            voxels[x, y, z] = new VoxelData() { depth = -1 };
+                        }
                     }
                 }
             }

@@ -14,6 +14,7 @@ namespace Models
         public Vector3Int Size { get; set; }
 
         public bool Contains(Vector3Int id);
+        public bool ValidID(Vector3Int id);
 
         public IEnumerable<Vector3Int> GetAllActiveVoxels();
     }

@@ -16,5 +16,21 @@ namespace Models
             new Vector3Int(0, 0, 1),
             new Vector3Int(0, 0, -1),
         };
+        public static List<Vector3Int> flatFaceOffsets = new List<Vector3Int>() {
+            new Vector3Int(1, 0, 0),
+            new Vector3Int(-1, 0, 0),
+            new Vector3Int(0, 1, 0),
+            new Vector3Int(0, -1, 0),
+        };
+        public static List<Vector3Int> flatNeighbours = new List<Vector3Int>() {
+            new Vector3Int(1, -1, 0),
+            new Vector3Int(1, 0, 0),
+            new Vector3Int(1, 1, 0),
+            new Vector3Int(0, 1, 0),
+            new Vector3Int(-1, 1, 0),
+            new Vector3Int(-1, 0, 0),
+            new Vector3Int(-1, -1, 0),
+            new Vector3Int(0, -1, 0),
+        };
     }
 }

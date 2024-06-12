@@ -1,4 +1,5 @@
-﻿using Models;
+﻿using Assimp;
+using Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +10,6 @@ namespace CrystaliteSlicer.Voxelize
 {
     public interface IVoxelize
     {
-        public IVoxelCollection Voxelize(IEnumerable<Triangle> triangles);
+        public IVoxelCollection Voxelize(IEnumerable<Triangle> mesh);
     }
 }

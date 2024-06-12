@@ -9,6 +9,6 @@ namespace Models
     public struct VoxelData
     {
         public int depth;
-        public float normZ;
+        public byte norm;
     }
 }

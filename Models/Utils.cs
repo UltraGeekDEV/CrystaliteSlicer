@@ -52,9 +52,5 @@ namespace Models
         {
             return id*Settings.Resolution;
         }
-        public static AABB GetAABB(Vector3Int id)
-        {
-            return new AABB() {lowerLeft = GetPos(id)-Settings.Resolution*0.5f,upperRight = GetPos(id) + Settings.Resolution * 0.5f };
-        }
     }
 }

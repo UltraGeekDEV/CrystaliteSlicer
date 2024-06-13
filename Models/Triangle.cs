@@ -64,14 +64,13 @@ namespace Models
             b = Vector3.Transform(b, rot);
             c = Vector3.Transform(c, rot);
         }
-        public IEnumerable<Vector3Int> GetVoxelsBresenham()
+        public void GetVoxelsBresenham(IVoxelCollection voxels)
         {
             var edgeA = Bresenham3D(A, B);
             var edgeB = Bresenham3D(B, C);
             var edgeC = Bresenham3D(C, A);
 
             var edges = edgeA.Union(edgeB.Union(edgeC)).ToHashSet();
-            var voxels = new HashSet<Vector3Int>();
 
             var zGroup = edges.GroupBy(x => x.Z).Select(x => x.OrderBy(x => x.X).ToList()).ToList();
 
@@ -82,7 +81,7 @@ namespace Models
                     var voxelLine = Bresenham3D(line[i], line[i + 1]);
                     foreach (var item in voxelLine)
                     {
-                        voxels.Add(item);
+                        voxels[item] = new VoxelData() { depth = VoxelData.shellVoxelValue };
                     }
                 }
             }
@@ -93,10 +92,10 @@ namespace Models
             {
                 for (int i = 0; i < line.Count - 1; i++)
                 {
-                    var voxelLine = Bresenham3D(line[i], line[i + 1]).Where(x => !voxels.Contains(x));
+                    var voxelLine = Bresenham3D(line[i], line[i + 1]);
                     foreach (var item in voxelLine)
                     {
-                        voxels.Add(item);
+                        voxels[item] = new VoxelData() { depth = VoxelData.shellVoxelValue };
                     }
                 }
             }
@@ -107,15 +106,13 @@ namespace Models
             {
                 for (int i = 0; i < line.Count - 1; i++)
                 {
-                    var voxelLine = Bresenham3D(line[i], line[i + 1]).Where(x => !voxels.Contains(x));
+                    var voxelLine = Bresenham3D(line[i], line[i + 1]);
                     foreach (var item in voxelLine)
                     {
-                        voxels.Add(item);
+                        voxels[item] = new VoxelData() { depth = VoxelData.shellVoxelValue };
                     }
                 }
             }
-
-            return voxels;
         }
 
         public static List<Vector3Int> Bresenham3D(Vector3Int a, Vector3Int b)
@@ -212,6 +209,19 @@ namespace Models
                 }
             }
             return ListOfPoints;
+        }
+        
+
+        public Vector3Int GetNormal()
+        {
+            if ((B-A).SQRMagnitude() > 4 && (C - A).SQRMagnitude() > 4)
+            {
+                return Vector3Int.Cross(B - A, C - A).Normalize();
+            }
+            else
+            {
+                return new Vector3Int(0, 0, 0);
+            } 
         }
     }
 }

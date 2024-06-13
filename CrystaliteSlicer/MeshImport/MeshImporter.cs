@@ -20,7 +20,7 @@ namespace CrystaliteSlicer.MeshImport
         public IImportMesh ImportMesh(string path)
         {
             AssimpContext context = new AssimpContext();
-            var scene = context.ImportFile(path, PostProcessSteps.Triangulate | PostProcessSteps.JoinIdenticalVertices);
+            var scene = context.ImportFile(path, PostProcessSteps.Triangulate | PostProcessSteps.JoinIdenticalVertices | PostProcessSteps.FixInFacingNormals);
             transformedMesh = originalMesh = scene.Meshes.SelectMany(x =>
             {
                 var vertices = x.Vertices.Select(x => new Vector3(x.X, x.Y, x.Z)).ToArray();

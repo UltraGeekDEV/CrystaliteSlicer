@@ -13,8 +13,7 @@ namespace CrystaliteSlicer.Voxelize
 {
     public class Voxelizer : IVoxelize
     {
-        const int fillVoxelValue = int.MaxValue;
-        const int shellVoxelValue = 1;
+        
         public IVoxelCollection Voxelize(IEnumerable<Triangle> triangles)
         {
             var mesh = triangles.ToList();
@@ -41,70 +40,40 @@ namespace CrystaliteSlicer.Voxelize
 
             upperRight += Vector3Int.One;
 
+            mesh.AsParallel().ForAll(x =>
+            {
+                x.A = x.A - lowerLeft;
+                x.B = x.B - lowerLeft;
+                x.C = x.C - lowerLeft;
+            });
+
             IVoxelCollection voxels = new FlatVoxelArray(upperRight-lowerLeft);
 
-            mesh.AsParallel().SelectMany(x => x.GetVoxelsBresenham()).ForAll(x => voxels[x-lowerLeft] = new VoxelData() { depth = shellVoxelValue });
-            Console.WriteLine("\tStarted Fill");
-            var tasks = Enumerable.Range(0, voxels.Size.X).Select(x=>Task.Run(() => FillVoxelMesh(voxels,x)));
-            Task.WaitAll(tasks.ToArray());
-            bool[] taskDone = new bool[Environment.ProcessorCount];
-            var corrosionQueue = new ConcurrentQueue<Vector3Int>();
-            Console.WriteLine("\tStarted Corrosion Finding");
-            tasks = Enumerable.Range(0, voxels.Size.X).Select(x => Task.Run(() =>
+            mesh.AsParallel().ForAll(x => x.GetVoxelsBresenham(voxels));
+            var seedPoints = mesh.Select(x=>(x.A + x.B + x.C) / 3 - x.GetNormal()*1).Where(x=>voxels.WithinBounds(x));
+            
+            var tasks = seedPoints.Select(x => Task.Run(() =>
             {
-                for (int j = 0; j < voxels.Size.Y; j++)
+                var localQueue = new Queue<Vector3Int>();
+                localQueue.Enqueue(x);
+                if (voxels[x].depth != VoxelData.shellVoxelValue)
                 {
-                    for (int z = 0; z < voxels.Size.Z; z++)
-                    {
-                        Vector3Int check = new Vector3Int(x, j, z);
-                        if (HasOpenFace(check, voxels) && voxels[check].depth != shellVoxelValue)
-                        {
-                            corrosionQueue.Enqueue(check);
-                            voxels[check] = new VoxelData() { depth = -1 };
-                        }
-                    }
+                    voxels[x] = new VoxelData() { depth = VoxelData.fillVoxelValue };
                 }
-            }));
+                //while (localQueue.Count > 0)
+                //{
+                //    var pos = localQueue.Dequeue();
+                //    var neighbours = GetNeighbours(pos, voxels);
+                //    foreach (var item in neighbours)
+                //    {
+                //        voxels[x] = new VoxelData() { depth = VoxelData.fillVoxelValue };
 
-            Task.WaitAll(tasks.ToArray());
-            Console.WriteLine("\tStarted Corrosion");
-            tasks = Enumerable.Range(0, Environment.ProcessorCount).Select(x => Task.Run(() =>
-            {
-                int id = x;
-                taskDone[id] = false;
-                Queue<Vector3Int> traversalQueue = new Queue<Vector3Int>();
-                Queue<Vector3Int> toAddQueue = new Queue<Vector3Int>();
-                while (!taskDone.All(x => x))
-                {
-                    while (!corrosionQueue.IsEmpty && traversalQueue.Count < 200)
-                    {
-                        if (corrosionQueue.TryDequeue(out var pos))
-                        {
-                            traversalQueue.Enqueue(pos);
-                        }
-                    }
-
-                    while (traversalQueue.Count > 0)
-                    {
-                        var pos = traversalQueue.Dequeue();
-                        var neighbours = GetNeighbours(pos, voxels);
-                        foreach (var check in neighbours)
-                        {
-                            if (voxels[check].depth != shellVoxelValue && !IsShellGap(check,voxels))
-                            {
-                                voxels[check] = new VoxelData() { depth = -1 };
-                                toAddQueue.Enqueue(check);
-                            }
-                        }
-                    }
-
-                    while (toAddQueue.Count > 0)
-                    {
-                        corrosionQueue.Enqueue(toAddQueue.Dequeue());
-                    }
-
-                    taskDone[id] = corrosionQueue.IsEmpty;
-                }
+                //        if (!IsShellGap(item,voxels))
+                //        {
+                //            localQueue.Enqueue(pos);
+                //        }
+                //    }
+                //}
             }));
 
             Task.WaitAll(tasks.ToArray());
@@ -117,11 +86,11 @@ namespace CrystaliteSlicer.Voxelize
         }
         private bool IsShellGap(Vector3Int check, IVoxelCollection voxels)
         {
-            return LUTS.faceOffsets.Count(x => voxels.Contains(x + check) && voxels[x + check].depth == shellVoxelValue) > 2;
+            return LUTS.faceOffsets.Count(x => voxels.Contains(x + check) && voxels[x + check].depth == VoxelData.shellVoxelValue) > 2;
         }
         private IEnumerable<Vector3Int> GetNeighbours(Vector3Int check, IVoxelCollection voxels)
         {
-            return LUTS.faceOffsets.Select(x => x+check).Where(voxels.Contains);
+            return LUTS.faceOffsets.Select(x => x+check).Where(x=>voxels.WithinBounds(x) && voxels[x].depth == -1);
         }
         private void FillVoxelMesh(IVoxelCollection voxels,int x)
         {
@@ -131,7 +100,7 @@ namespace CrystaliteSlicer.Voxelize
                 {
                     if (voxels[x,y,z].depth != 1)
                     {
-                        voxels[x, y, z] = new VoxelData() { depth = fillVoxelValue };
+                        voxels[x, y, z] = new VoxelData() { depth = VoxelData.fillVoxelValue };
                     }
                 }
             }

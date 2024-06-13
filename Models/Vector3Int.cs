@@ -133,5 +133,35 @@ namespace Models
         {
             return new Vector3Int(Math.Abs(X), Math.Abs(Y), Math.Abs(Z));
         }
+
+        public static Vector3Int Cross(Vector3Int a, Vector3Int b)
+        {
+            return new Vector3Int(a.Y * b.Z - a.Z * b.Y,a.Z*b.X-a.X*b.Z,a.X*b.Y-a.Y*b.X);
+        }
+        public Vector3Int Normalize()
+        {
+            if (Math.Abs(X) > Math.Abs(Y))
+            {
+                if(Math.Abs(X) > Math.Abs(Z))
+                {
+                    return new Vector3Int(Math.Sign(X), 0, 0);
+                }
+                else
+                {
+                    return new Vector3Int(0, 0, 0);
+                }
+            }
+            else
+            {
+                if (Math.Abs(Y) > Math.Abs(Z))
+                {
+                    return new Vector3Int(0, Math.Sign(Y), 0);
+                }
+                else
+                {
+                    return new Vector3Int(0, 0, 0);
+                }
+            }
+        }
     }
 }

@@ -6,21 +6,19 @@ using System.Threading.Tasks;
 
 namespace Models
 {
-    public class FlatVoxelArray : IVoxelCollection
+    public class ThickVoxelArray : IVoxelCollection
     {
-        private int zMult;
-        public VoxelData this[Vector3Int pos] { get => voxels[pos.X+pos.Y*size.X+pos.Z* zMult]; set => voxels[pos.X + pos.Y * size.X + pos.Z * zMult] = value; }
-        public VoxelData this[int x, int y, int z] { get => voxels[x + y * size.X + z * zMult]; set => voxels[x + y * size.X + z * zMult] = value; }
+        public VoxelData this[Vector3Int pos] { get => voxels[pos.X , pos.Y , pos.Z]; set => voxels[pos.X , pos.Y , pos.Z] = value; }
+        public VoxelData this[int x, int y, int z] { get => voxels[x , y , z ]; set => voxels[x, y, z] = value; }
         public Vector3Int Size { get => size; set => size = value; }
 
-        private VoxelData[] voxels;
+        private VoxelData[,,] voxels;
         private Vector3Int size;
 
-        public FlatVoxelArray(Vector3Int size)
+        public ThickVoxelArray(Vector3Int size)
         {
             this.size = size;
-            voxels = new VoxelData[size.X * size.Y * size.Z];
-            zMult = size.X * size.Y;
+            voxels = new VoxelData[size.X , size.Y , size.Z];
         }
         public bool WithinBounds(Vector3Int id)
         {
@@ -52,3 +50,4 @@ namespace Models
         }
     }
 }
+

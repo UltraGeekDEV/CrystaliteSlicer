@@ -35,9 +35,9 @@ namespace Models
                 );
 
             return new Vector3Int(
-                (int)Math.Floor(scaled.X),
-                (int)Math.Floor(scaled.Y),
-                (int)Math.Floor(scaled.Z)
+                (int)(scaled.X),
+                (int)(scaled.Y),
+                (int)(scaled.Z)
                 );
         }
         protected Vector3 Id2Pos(Vector3Int id, Vector3 resolution)
@@ -64,58 +64,55 @@ namespace Models
             b = Vector3.Transform(b, rot);
             c = Vector3.Transform(c, rot);
         }
-        public IEnumerable<Vector3Int> GetVoxelsBresenham()
+        public void GetVoxelsBresenham(IVoxelCollection voxels)
         {
             var edgeA = Bresenham3D(A, B);
             var edgeB = Bresenham3D(B, C);
             var edgeC = Bresenham3D(C, A);
 
             var edges = edgeA.Union(edgeB.Union(edgeC)).ToHashSet();
-            var voxels = new HashSet<Vector3Int>();
 
-            var zGroup = edges.GroupBy(x => x.Z).Select(x => x.OrderBy(x => x.X).ToList()).ToList();
+            var zGroup = edges.GroupBy(x => x.Z).Select(x => x.ToList()).ToList();
 
-            foreach (var line in zGroup)
+            for (int j = 0; j < zGroup.Count; j++)
             {
-                for (int i = 0; i < line.Count - 1; i++)
+                for (int i = 0; i < zGroup[j].Count - 1; i++)
                 {
-                    var voxelLine = Bresenham3D(line[i], line[i + 1]);
-                    foreach (var item in voxelLine)
+                    var voxelLine = Bresenham3D(zGroup[j][i], zGroup[j][i + 1]);
+                    for (int k = 0; k < voxelLine.Count; k++)
                     {
-                        voxels.Add(item);
+                        voxels[voxelLine[k]] = new VoxelData() { depth = 1 };
                     }
                 }
             }
 
-            var xGroup = edges.GroupBy(x => x.X).Select(x => x.OrderBy(x => x.Y).ToList()).ToList();
+            var xGroup = edges.GroupBy(x => x.X).Select(x => x.ToList()).ToList();
 
-            foreach (var line in xGroup)
+            for (int j = 0; j < xGroup.Count; j++)
             {
-                for (int i = 0; i < line.Count - 1; i++)
+                for (int i = 0; i < xGroup[j].Count - 1; i++)
                 {
-                    var voxelLine = Bresenham3D(line[i], line[i + 1]).Where(x => !voxels.Contains(x));
-                    foreach (var item in voxelLine)
+                    var voxelLine = Bresenham3D(xGroup[j][i], xGroup[j][i + 1]);
+                    for (int k = 0; k < voxelLine.Count; k++)
                     {
-                        voxels.Add(item);
+                        voxels[voxelLine[k]] = new VoxelData() { depth = 1 };
                     }
                 }
             }
 
-            var yGroup = edges.GroupBy(x => x.Y).Select(x => x.OrderBy(x => x.Z).ToList()).ToList();
+            var yGroup = edges.GroupBy(x => x.Y).Select(x => x.ToList()).ToList();
 
-            foreach (var line in yGroup)
+            for (int j = 0; j < yGroup.Count; j++)
             {
-                for (int i = 0; i < line.Count - 1; i++)
+                for (int i = 0; i < yGroup[j].Count - 1; i++)
                 {
-                    var voxelLine = Bresenham3D(line[i], line[i + 1]).Where(x => !voxels.Contains(x));
-                    foreach (var item in voxelLine)
+                    var voxelLine = Bresenham3D(yGroup[j][i], yGroup[j][i + 1]);
+                    for (int k = 0; k < voxelLine.Count; k++)
                     {
-                        voxels.Add(item);
+                        voxels[voxelLine[k]] = new VoxelData() { depth = 1 };
                     }
                 }
             }
-
-            return voxels;
         }
 
         public static List<Vector3Int> Bresenham3D(Vector3Int a, Vector3Int b)

@@ -49,14 +49,14 @@ namespace CrystaliteSlicer.Voxelize
                 x.C = x.C - lowerLeft;
             });
 
-            Console.WriteLine($"\tMesh Prep took:{(DateTime.Now - startTime).TotalMilliseconds}");
+            Console.WriteLine($"\tMesh Prep took:{(DateTime.Now - startTime).TotalMilliseconds} ms");
             startTime = DateTime.Now;
 
             IVoxelCollection voxels = new ThickVoxelArray(upperRight-lowerLeft);
 
             mesh.AsParallel().ForAll(x=>x.GetVoxelsBresenham(voxels));
 
-            Console.WriteLine($"\tShell took:{(DateTime.Now - startTime).TotalMilliseconds}");
+            Console.WriteLine($"\tShell took:{(DateTime.Now - startTime).TotalMilliseconds}  ms");
             startTime = DateTime.Now;
 
             int seedSpacing = voxels.Size.X / Environment.ProcessorCount / 2;
@@ -80,7 +80,7 @@ namespace CrystaliteSlicer.Voxelize
                 }
                 return ret;
             });
-            Console.WriteLine($"\tCorrosion seeding took:{(DateTime.Now - startTime).TotalMilliseconds}");
+            Console.WriteLine($"\tCorrosion seeding took:{(DateTime.Now - startTime).TotalMilliseconds} ms");
             startTime = DateTime.Now;
 
             var tasks = seedPoints.Select(x => Task.Run(() =>
@@ -100,7 +100,7 @@ namespace CrystaliteSlicer.Voxelize
             }));
 
             Task.WaitAll(tasks.ToArray());
-            Console.WriteLine($"\tCorrosion took:{(DateTime.Now - startTime).TotalMilliseconds}");
+            Console.WriteLine($"\tCorrosion took:{(DateTime.Now - startTime).TotalMilliseconds}  ms");
             return voxels;
         }
         

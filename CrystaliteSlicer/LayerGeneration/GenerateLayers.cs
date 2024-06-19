@@ -62,7 +62,7 @@ namespace CrystaliteSlicer.LayerGeneration
             }));
             Task.WaitAll(tasks.ToArray());
 
-            Console.WriteLine($"\tFirst Layer Took:{(DateTime.Now - start).TotalMilliseconds}");
+            Console.WriteLine($"\tFirst Layer Took:{(DateTime.Now - start).TotalMilliseconds} ms");
             start = DateTime.Now;
 
             maxZ = firstLayer;
@@ -146,7 +146,7 @@ namespace CrystaliteSlicer.LayerGeneration
                 });
                 activeEdge = groupedEdge.Select(x => new Vector3Int(x.Key.X, x.Key.Y, nextHeight[x.Key.X, x.Key.Y].minZ)).ToList();
                 height = nextHeight;
-                Console.WriteLine($"\tFinnished layer {curLayer} with {activeEdge.Count} voxels in active edge");
+                Console.WriteLine($"\tFinnished layer {curLayer}");
             }
             //ExportMaxHeightInstead
 
@@ -173,8 +173,9 @@ namespace CrystaliteSlicer.LayerGeneration
             //        }
             //    }
             //}
-
-            Console.WriteLine($"\tNonPlanar Layers Took:{(DateTime.Now - start).TotalMilliseconds}");
+            var time = (DateTime.Now - start).TotalMilliseconds;
+            Console.WriteLine($"\tNonPlanar Layers Took:{time} ms");
+            Console.WriteLine($"\t\tOn avarage a layer took:{time/(curLayer-1)} ms");
             start = DateTime.Now;
         }
 

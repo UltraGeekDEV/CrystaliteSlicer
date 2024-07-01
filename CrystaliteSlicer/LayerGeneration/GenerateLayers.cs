@@ -16,9 +16,7 @@ namespace CrystaliteSlicer.LayerGeneration
         int maxLayerThickness;
         IVoxelCollection voxels;
 
-        (int minZ, int maxZ)[,] height;
         float[,] maxHeight;
-        (int minZ, int maxZ)[,] nextHeight;
 
         float zVoxelsPerX;
         int curLayer;
@@ -27,8 +25,6 @@ namespace CrystaliteSlicer.LayerGeneration
             this.voxels = voxels;
             nozzleSize = new Vector3Int(new Vector3(Settings.NozzleDiameter, Settings.NozzleDiameter, 0) / Settings.Resolution);
             maxLayerThickness = Math.Max((int)(Settings.MaxLayerHeight / Settings.Resolution.Z), 1);
-
-            height = new (int minZ, int maxZ)[voxels.Size.X, voxels.Size.Y];
 
             zVoxelsPerX = (MathF.Tan(Settings.MaxSlope * (MathF.PI / 180.0f)) * Settings.Resolution.X / Settings.Resolution.Z);
             curLayer = 1;
@@ -49,7 +45,6 @@ namespace CrystaliteSlicer.LayerGeneration
                             var voxel = voxels[x, y, z];
                             voxel.layer = 1;
                             voxels[x, y, z] = voxel;
-                            height[x, y] = (Math.Min(height[x, y].maxZ, z + 1), Math.Max(height[x, y].minZ, z + 1));
                             lock (activeEdgeLock)
                             {
                                 activeEdge.Add(new Vector3Int(x, y, z));
@@ -70,34 +65,33 @@ namespace CrystaliteSlicer.LayerGeneration
             int skippedVoxels = 0;
             object lockSkippedVoxels = new object();
 
-            int[,] minHeight = new int[voxels.Size.X,voxels.Size.Y];
+            int[,] minHeight = new int[voxels.Size.X, voxels.Size.Y];
 
             while (activeEdge.Count > 0)
             {
                 curLayer++;
 
                 maxHeight = new float[voxels.Size.X, voxels.Size.Y];
-                nextHeight = new (int minZ, int maxZ)[voxels.Size.X, voxels.Size.Y];
                 var checkHeight = new int[voxels.Size.X, voxels.Size.Y];
                 //activeEdge.AsParallel().SelectMany(CheckAttached).Distinct().GroupBy(x => new Vector3Int(x.X, x.Y)).ForAll(x =>
                 //{
                 //    checkHeight[x.Key.X, x.Key.Y] = Math.Max(x.Min(x => x.Z), height[x.Key.X, x.Key.Y].maxZ);
                 //});
                 var distFromEdge = new int[voxels.Size.X, voxels.Size.Y];
-                var checkLayer = new (int min,int max)[voxels.Size.X, voxels.Size.Y];
+                var checkLayer = new (int min, int max)[voxels.Size.X, voxels.Size.Y];
 
                 tasks = Enumerable.Range(0, voxels.Size.X).AsParallel().Select(x => Task.Run(() =>
                 {
                     for (int y = 0; y < voxels.Size.Y; y++)
                     {
-                        distFromEdge[x,y] = -1;
+                        distFromEdge[x, y] = -1;
                         checkLayer[x, y] = (int.MaxValue, int.MaxValue);
                         minHeight[x, y] = 0;
                     }
                 }));
                 Task.WaitAll(tasks.ToArray());
 
-                activeEdge.AsParallel().ForAll(x => distFromEdge[x.X,x.Y] = 0);
+                activeEdge.AsParallel().ForAll(x => distFromEdge[x.X, x.Y] = 0);
                 activeEdge.AsParallel().GroupBy(x => new Vector3Int(x.X, x.Y)).ForAll(x => checkLayer[x.Key.X, x.Key.Y] = (x.Min(y => y.Z), x.Max(y => y.Z)));
 
                 tasks = Enumerable.Range(0, voxels.Size.X).AsParallel().Select(x => Task.Run(() =>
@@ -109,7 +103,7 @@ namespace CrystaliteSlicer.LayerGeneration
                         if (distFromEdge[x, y] != -1)
                         {
                             curMaxDist = 0;
-                            curHeight = Math.Min(checkLayer[x, y].min,curHeight);
+                            curHeight = Math.Min(checkLayer[x, y].min, curHeight);
                         }
                         else
                         {
@@ -153,7 +147,7 @@ namespace CrystaliteSlicer.LayerGeneration
                         distFromEdge[x, y] = curMaxDist;
 
                         curHeight = Math.Min(curHeight, checkLayer[x, y].min);
-                        if (checkLayer[x,y].max == int.MaxValue)
+                        if (checkLayer[x, y].max == int.MaxValue)
                         {
                             checkLayer[x, y] = (curHeight, curHeight + maxLayerThickness);
                         }
@@ -169,15 +163,15 @@ namespace CrystaliteSlicer.LayerGeneration
                 {
                     for (int x = 0; x < voxels.Size.X; x++)
                     {
-                        if (distFromEdge[x,y] <= nozzleSize.X)
+                        if (distFromEdge[x, y] <= nozzleSize.X)
                         {
                             var range = checkLayer[x, y];
-                            range.max += maxLayerThickness+2;
+                            range.max += maxLayerThickness + 2;
                             var min = int.MaxValue;
 
                             for (int z = range.min; z < range.max; z++)
                             {
-                                if (voxels.Contains(new Vector3Int(x, y, z)) && voxels[x,y,z].layer == 0)
+                                if (voxels.Contains(new Vector3Int(x, y, z)) && voxels[x, y, z].layer == 0)
                                 {
                                     min = z;
                                     break;
@@ -259,7 +253,7 @@ namespace CrystaliteSlicer.LayerGeneration
                 {
                     for (int x = 0; x < voxels.Size.X; x++)
                     {
-                        if (distFromEdge[x,y] <= nozzleSize.X)
+                        if (distFromEdge[x, y] <= nozzleSize.X)
                         {
                             var fromZ = checkHeight[x, y];
                             var toZ = maxHeight[x, y];
@@ -272,7 +266,7 @@ namespace CrystaliteSlicer.LayerGeneration
                                 check.Z = z;
                                 if (voxels.Contains(check) && voxels[check].layer == 0)
                                 {
-                                    if (z < minHeight[x,y])
+                                    if (z < minHeight[x, y])
                                     {
                                         lock (lockSkippedVoxels)
                                         {
@@ -299,7 +293,7 @@ namespace CrystaliteSlicer.LayerGeneration
                 }));
                 Task.WaitAll(tasks.ToArray());
 
-                var stillOpen = activeEdge.AsParallel().Where(HasOpenFace).GroupBy(x=>new Vector3Int(x.X,x.Y));
+                var stillOpen = activeEdge.AsParallel().Where(HasOpenFace).GroupBy(x => new Vector3Int(x.X, x.Y));
 
                 stillOpen.ForAll(x =>
                 {
@@ -321,46 +315,20 @@ namespace CrystaliteSlicer.LayerGeneration
                     {
                         if (nextLayerVoxels[x, y].max != 0)
                         {
-                            nextHeight[x, y] = (nextLayerVoxels[x, y].min, nextLayerVoxels[x, y].max);
-                            activeEdge.Add(new Vector3Int(x, y, nextHeight[x, y].minZ));
+                            activeEdge.Add(new Vector3Int(x, y, nextLayerVoxels[x, y].min));
                         }
                     }
                 }
-                height = nextHeight;
                 Console.WriteLine($"\tFinnished layer {curLayer} with {activeEdge.Count} in active edge");
                 getNextLayer += (DateTime.Now - timerStart).TotalMilliseconds;
                 timerStart = DateTime.Now;
             }
-            //ExportMaxHeightInstead
 
-            //for (int x = 0; x < voxels.Size.X; x++)
-            //{
-            //    for (int y = 0; y < voxels.Size.Y; y++)
-            //    {
-            //        for (int z = 0; z < maxHeight[x, y]; z++)
-            //        {
-            //            voxels[x, y, z] = new VoxelData() { depth = 1, layer = 1 };
-            //        }
-            //    }
-            //}
-
-            //ExportHeightInstead
-
-            //for (int x = 0; x < voxels.Size.X; x++)
-            //{
-            //    for (int y = 0; y < voxels.Size.Y; y++)
-            //    {
-            //        for (int z = 0; z < height[x, y]; z++)
-            //        {
-            //            voxels[x, y, z] = new VoxelData() { depth = 1, layer = 1 };
-            //        }
-            //    }
-            //}
             var totalMiliseconds = (DateTime.Now - start).TotalMilliseconds;
             var avgLayer = totalMiliseconds / curLayer;
             Console.WriteLine($"\n\tNonPlanar Layers Took:{totalMiliseconds}");
             Console.WriteLine($"\t\tOf which a layer on avarage took: {avgLayer}");
-            Console.WriteLine($"\t\t\tMade up of:\n\t\t\t\t{(int)(getValidShell/avgLayer/ curLayer * 100)}%\n\t\t\t\t{(int)(getMaxHeight / curLayer/ avgLayer * 100)}%\n\t\t\t\t{(int)(getNextLayer /curLayer/ avgLayer * 100)}%");
+            Console.WriteLine($"\t\t\tMade up of:\n\t\t\t\t{(int)(getValidShell / avgLayer / curLayer * 100)}%\n\t\t\t\t{(int)(getMaxHeight / curLayer / avgLayer * 100)}%\n\t\t\t\t{(int)(getNextLayer / curLayer / avgLayer * 100)}%");
             Console.WriteLine($"\tHad to skip {skippedVoxels} voxels due to blocking geometry");
             start = DateTime.Now;
         }
@@ -376,80 +344,6 @@ namespace CrystaliteSlicer.LayerGeneration
                 }
             }
             return false;
-        }
-
-        private IEnumerable<Vector3Int> GetAttached(Vector3Int pos)
-        {
-            var ret = new List<Vector3Int>();
-
-            for (int x = -nozzleSize.X; x <= nozzleSize.X; x++)
-            {
-                for (int y = -nozzleSize.Y; y <= nozzleSize.Y; y++)
-                {
-                    var check = new Vector3Int(x, y, 0) + pos;
-                    if (voxels.WithinBounds(check))
-                    {
-                        var toZ = maxHeight[check.X, check.Y];
-                        int fromZ = pos.Z;
-                        //if (height[check.X, check.Y].maxZ == 0)
-                        //{
-                        //    fromZ = pos.Z;
-                        //}
-                        //else
-                        //{
-                        //    fromZ = height[check.X, check.Y].maxZ;
-                        //}
-
-
-                        for (int z = fromZ; z <= toZ; z++)
-                        {
-                            check.Z = z;
-                            if (voxels.Contains(check) && voxels[check].layer == 0)
-                            {
-                                ret.Add(check);
-                            }
-                        }
-                    }
-                }
-            }
-            return ret;
-        }
-        private IEnumerable<Vector3Int> CheckAttached(Vector3Int pos)
-        {
-            var ret = new List<Vector3Int>();
-
-            for (int x = -nozzleSize.X; x <= nozzleSize.X; x++)
-            {
-                for (int y = -nozzleSize.Y; y <= nozzleSize.Y; y++)
-                {
-                    var check = new Vector3Int(x, y, 0) + pos;
-                    if (voxels.WithinBounds(check))
-                    {
-                        int toZ;
-                        int fromZ;
-                        if (height[check.X, check.Y].maxZ == 0)
-                        {
-                            fromZ = pos.Z;
-                        }
-                        else
-                        {
-                            fromZ = height[check.X, check.Y].maxZ;
-                        }
-
-                        toZ = pos.Z + maxLayerThickness;
-
-                        for (int z = fromZ; z <= toZ; z++)
-                        {
-                            check.Z = z;
-                            if (voxels.Contains(check) && voxels[check].layer == 0)
-                            {
-                                ret.Add(check);
-                            }
-                        }
-                    }
-                }
-            }
-            return ret;
         }
     }
 }

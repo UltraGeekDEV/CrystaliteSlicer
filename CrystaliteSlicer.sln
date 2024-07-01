@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CrystaliteSlicer", "Crystal
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "Models\Models.csproj", "{A71F9472-7B97-4542-858E-6716BF75F429}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DebugSlicer", "DebugSlicer\DebugSlicer.csproj", "{78450E64-BBBE-40EA-AF5D-2E572AE93AD8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DebugSlicer", "DebugSlicer\DebugSlicer.csproj", "{78450E64-BBBE-40EA-AF5D-2E572AE93AD8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

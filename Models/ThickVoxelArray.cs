@@ -29,6 +29,7 @@ namespace Models
             return WithinBounds(id) && this[id].depth != -1;
         }
 
+
         public IEnumerable<Vector3Int> GetAllActiveVoxels()
         {
             var ret = new List<Vector3Int>();

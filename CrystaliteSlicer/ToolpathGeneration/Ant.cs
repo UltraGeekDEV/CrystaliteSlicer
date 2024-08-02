@@ -11,7 +11,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
     internal class Ant
     {
         private Random randomizer = new Random();
-        private Dictionary<(Vector3Int,Vector3Int),double> pheromones;
+        private Dictionary<(Vector3Int, Vector3Int), double> pheromones;
 
         private List<(Vector3Int, Vector3Int)> path = new List<(Vector3Int, Vector3Int)>();
 
@@ -26,7 +26,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
         public void Traverse(HashSet<Vector3Int> points)
         {
             var curPoint = GetPoint(points);
-            while(points.Count > 0)
+            while (points.Count > 0)
             {
                 var nextPoint = GetPoint(points, curPoint);
                 path.Add((curPoint, nextPoint));

@@ -11,13 +11,13 @@ namespace CrystaliteSlicer.ToolpathGeneration
     internal class Ant
     {
         private Random randomizer = new Random();
-        private Dictionary<(Vector3Int,Vector3Int),float> pheromones;
+        private Dictionary<(Vector3Int,Vector3Int),double> pheromones;
 
         private List<(Vector3Int, Vector3Int)> path = new List<(Vector3Int, Vector3Int)>();
 
         public List<(Vector3Int, Vector3Int)> Path { get => path; set => path = value; }
 
-        public Ant(Dictionary<(Vector3Int, Vector3Int), float> pheromones)
+        public Ant(Dictionary<(Vector3Int, Vector3Int), double> pheromones)
         {
             Path = new List<(Vector3Int, Vector3Int)>();
             this.pheromones = pheromones;

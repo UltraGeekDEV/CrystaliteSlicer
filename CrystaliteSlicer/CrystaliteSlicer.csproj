@@ -7,6 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="ToolpathGeneration\Ant.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="ToolpathGeneration\Ant.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AssimpNet" Version="4.1.0" />
   </ItemGroup>
 

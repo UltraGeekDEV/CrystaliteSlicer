@@ -135,7 +135,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
         }
         public IEnumerable<Line> GetPath()
         {
-            throw new NotImplementedException();
+            var pheromones = new Dictionary<(Vector3Int, Vector3Int), double>();
         }
     }
 }

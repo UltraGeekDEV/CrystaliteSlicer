@@ -52,7 +52,7 @@ namespace CrystaliteSlicer.Voxelize
             Console.WriteLine($"\tMesh Prep took:{(DateTime.Now - startTime).TotalMilliseconds} ms");
             startTime = DateTime.Now;
 
-            IVoxelCollection voxels = new ThickVoxelArray(upperRight-lowerLeft);
+            IVoxelCollection voxels = new FlatVoxelArray(upperRight-lowerLeft);
 
             mesh.AsParallel().ForAll(x=>x.GetVoxelsBresenham(voxels));
 

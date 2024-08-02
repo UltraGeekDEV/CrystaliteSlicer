@@ -328,7 +328,7 @@ namespace CrystaliteSlicer.LayerGeneration
             var avgLayer = totalMiliseconds / curLayer;
             Console.WriteLine($"\n\tNonPlanar Layers Took:{totalMiliseconds}");
             Console.WriteLine($"\t\tOf which a layer on avarage took: {avgLayer}");
-            Console.WriteLine($"\t\t\tMade up of:\n\t\t\t\t{(int)(getValidShell / avgLayer / curLayer * 100)}%\n\t\t\t\t{(int)(getMaxHeight / curLayer / avgLayer * 100)}%\n\t\t\t\t{(int)(getNextLayer / curLayer / avgLayer * 100)}%");
+            Console.WriteLine($"\t\t\tMade up of:\n\t\t\t\tGet active shell:{(int)(getValidShell / avgLayer / curLayer * 100)}%\n\t\t\t\tGet max height:{(int)(getMaxHeight / curLayer / avgLayer * 100)}%\n\t\t\t\tGet next layer:{(int)(getNextLayer / curLayer / avgLayer * 100)}%");
             Console.WriteLine($"\tHad to skip {skippedVoxels} voxels due to blocking geometry");
             start = DateTime.Now;
         }

@@ -40,19 +40,26 @@ namespace Models
         public static float InfillSpeed { get =>    Instance.infillSpeed; set =>     Instance.infillSpeed = value; }
         public static float InfillDensity { get =>  Instance.infillDensity; set =>   Instance.infillDensity = value; }
         public static int WallCount { get => Instance.wallCount; set => Instance.wallCount = value; }
+        public static float PheromoneWeight { get => Instance.pheromoneWeight; set => Instance.pheromoneWeight = value; }
+        public static float DirectionChangeWeight { get => Instance.directionChangeWeight; set => Instance.directionChangeWeight = value; }
+        public static float DistanceWeight { get => Instance.distanceWeight; set => Instance.distanceWeight = value; }
+        public static float RandomWeight { get => Instance.randomWeight; set => Instance.randomWeight = value; }
+        public static int AntCount { get => Instance.antCount; set => Instance.antCount = value; }
+        public static int StepCount { get => Instance.stepCount; set => Instance.stepCount = value; }
 
-        private Vector3 resolution;
-        private Vector3 printVolume;
-
+        //model settings -to be removed-
         private Vector3 rotation;
         private Vector3 scale;
         private Vector3 offset;
 
+        //printer settings
+        private Vector3 printVolume;
         private float nozzleDiameter;
         private float maxSlope;
         private float maxLayerHeight;
-        private float infillDensity;
 
+        //print settings
+        private Vector3 resolution;
         private float hotendTemp;
         private float bedTemp;
         private float fanSpeed;
@@ -60,6 +67,15 @@ namespace Models
         private float outerWallSpeed;
         private float innerWallSpeed;
         private float infillSpeed;
+        private float infillDensity;
         private int wallCount;
+
+        //toolpath settings
+        private float pheromoneWeight;
+        private float directionChangeWeight;
+        private float distanceWeight;
+        private float randomWeight;
+        private int antCount;
+        private int stepCount;
     }
 }

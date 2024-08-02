@@ -46,6 +46,9 @@ namespace Models
         public static float RandomWeight { get => Instance.randomWeight; set => Instance.randomWeight = value; }
         public static int AntCount { get => Instance.antCount; set => Instance.antCount = value; }
         public static int StepCount { get => Instance.stepCount; set => Instance.stepCount = value; }
+        public static float PheromoneDecayFactor { get => Instance.pheromoneDecayFactor; set => Instance.pheromoneDecayFactor = value; }
+        public static float SmoothingAngle { get => Instance.smoothingAngle; set => Instance.smoothingAngle = value; }
+        public static int SmoothingCount { get => Instance.smoothingCount; set => Instance.smoothingCount = value; }
 
         //model settings -to be removed-
         private Vector3 rotation;
@@ -75,7 +78,10 @@ namespace Models
         private float directionChangeWeight;
         private float distanceWeight;
         private float randomWeight;
+        private float pheromoneDecayFactor;
+        private float smoothingAngle;
         private int antCount;
         private int stepCount;
+        private int smoothingCount;
     }
 }

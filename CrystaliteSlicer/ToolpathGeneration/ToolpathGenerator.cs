@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -13,6 +14,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
         int halfNozzleVoxelSize;
         List<List<Vector3Int>> layers;
         List<Dictionary<Vector3Int, int>> thickness;
+        float zPerX;
         public ToolpathGenerator()
         {
             layers = new List<List<Vector3Int>>();
@@ -20,6 +22,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
 
             nozzleVoxelSize = (int)(Settings.NozzleDiameter / Settings.Resolution.X);
             halfNozzleVoxelSize = nozzleVoxelSize / 2;
+            zPerX = MathF.Tan(Settings.MaxSlope * (MathF.PI / 180.0f));
         }
         public void AddLayer((int height, int thickness)[,] layer)
         {
@@ -135,7 +138,105 @@ namespace CrystaliteSlicer.ToolpathGeneration
         }
         public IEnumerable<Line> GetPath()
         {
+            var tasks = layers.Select((x, id) => Task<List<Line>>.Run(() => GetLayerPath(x, thickness[id]))).ToArray();
+            Task.WaitAll(tasks);
+
+            var finalPath = new List<Line>();
+
+            var layerPaths = tasks.Select(x => x.Result).ToList();
+
+            var cur = layerPaths.First().First();
+            layerPaths.First().Remove(cur);
+            int segmentCount = 0;
+
+            foreach (var layer in layerPaths)
+            {
+                foreach (var segment in layer)
+                {
+                    var curDir = Vector3.Normalize(cur.End-cur.Start);
+                    var nextDir = Vector3.Normalize(segment.End - segment.Start);
+
+                    if (Vector3.Dot(curDir, nextDir) >= Settings.SmoothingAngle && segmentCount < Settings.SmoothingCount && cur.Travel.Equals(segment.Travel))
+                    {
+                        cur = new Line(cur.Start,segment.End,(cur.Flow+segment.Flow)/2,cur.Travel);
+                        segmentCount++;
+                    }
+                    else if(cur.Travel)
+                    {
+                        Vector3 path = cur.End - cur.Start;
+                        path.Z = 0;
+                        float climbFraction = cur.End.Z / (cur.End.Z + cur.Start.Z);
+                        var midpoint = cur.Start + path * climbFraction + new Vector3(0, 0, path.Length() * climbFraction * zPerX * 1.25f);
+
+                        finalPath.Add(new Line(cur.Start, midpoint,0,true));
+                        finalPath.Add(new Line(midpoint, cur.End ,0,true));
+
+                        cur = segment;
+
+                        segmentCount = 0;
+                    }
+                    else
+                    {
+                        finalPath.Add(cur);
+                        cur = segment;
+
+                        segmentCount = 0;
+                    }
+                }
+            }
+
+            return finalPath;
+        }
+
+        private List<Line> GetLayerPath(List<Vector3Int> points, Dictionary<Vector3Int, int> thickness)
+        {
             var pheromones = new Dictionary<(Vector3Int, Vector3Int), double>();
+
+            for (int i = 0; i < Settings.StepCount; i++)
+            {
+                foreach (var item in pheromones.Keys.ToList())
+                {
+                    pheromones[item] = pheromones[item] * Settings.PheromoneDecayFactor;
+                }
+
+                var ants = Enumerable.Range(0, Settings.AntCount).Select(x => new Ant(pheromones)).ToList();
+                var tasks = ants.Select(x => Task.Run(() => x.Traverse(points.ToHashSet()))).ToArray();
+                Task.WaitAll(tasks);
+
+                foreach (var ant in ants)
+                {
+                    double dist = 0, deltaDir = 0;
+                    Vector3 prevDir = Vector3.Zero;
+                    foreach (var trail in ant.Path)
+                    {
+                        dist += (trail.Item1 - trail.Item2).Magnitude();
+                        deltaDir += 1 + Vector3.Dot(prevDir, (trail.Item2 - trail.Item1)*1.0f);
+                    }
+
+                    double overallPathEval = 1 / dist;
+
+                    foreach (var trail in ant.Path)
+                    {
+                        pheromones[trail] += overallPathEval;
+                    }
+                }
+            }
+
+            var toTraverse = points.ToList();
+
+            Vector3Int cur = toTraverse.First();
+            toTraverse.Remove(cur);
+            var retPath = new List<Line>();
+
+            while (toTraverse.Count > 0)
+            {
+                var next = toTraverse.OrderByDescending(x => pheromones[(cur, x)]).First();
+                retPath.Add(new Line(cur * Settings.Resolution, next * Settings.Resolution, (thickness[cur] + thickness[next])*0.5f,(next-cur).SQRMagnitude() > 2.5));
+                toTraverse.Remove(next);
+                cur = next;
+            }
+
+            return retPath;
         }
     }
 }

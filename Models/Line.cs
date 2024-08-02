@@ -12,14 +12,18 @@ namespace Models
         private Vector3 start;
         private Vector3 end;
         private float flow;
+        private bool travel;
         public Vector3 Start { get => start; set => start = value; }
         public Vector3 End { get => end; set => end = value; }
         public float Flow { get => flow; set => flow = value; }
-        public Line(Vector3 start, Vector3 end, float flow)
+        public bool Travel { get => travel; set => travel = value; }
+
+        public Line(Vector3 start, Vector3 end, float flow, bool travel)
         {
             this.Start = start;
             this.End = end;
             this.Flow = flow;
+            this.travel = travel;
         }
 
         public Line()

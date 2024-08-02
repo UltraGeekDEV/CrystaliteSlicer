@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace CrystaliteSlicer.LayerGeneration
 {
-    internal interface IGenerateLayers
+    public interface IGenerateLayers
     {
         public void GetLayers(IVoxelCollection voxels);
     }

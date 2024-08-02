@@ -145,13 +145,23 @@ namespace CrystaliteSlicer.ToolpathGeneration
 
             var layerPaths = tasks.Select(x => x.Result).ToList();
 
-            var cur = layerPaths.First().First();
-            layerPaths.First().Remove(cur);
-            int segmentCount = 0;
-
+            Vector3 prevPoint = -Vector3.One;
             foreach (var layer in layerPaths)
             {
-                foreach (var segment in layer)
+                int segmentCount = 0;
+                Line cur = layer.First();
+                if (prevPoint.Z > 0)
+                {
+                    Vector3 path = cur.Start - prevPoint;
+                    path.Z = 0;
+                    float climbFraction = cur.Start.Z / (cur.Start.Z + prevPoint.Z);
+                    var midpoint = prevPoint + path * climbFraction + new Vector3(0, 0, path.Length() * climbFraction * zPerX * 1.25f);
+
+                    finalPath.Add(new Line(prevPoint, midpoint, 0, true));
+                    finalPath.Add(new Line(midpoint, cur.Start, 0, true));
+                }
+
+                foreach (var segment in layer.Skip(1))
                 {
                     var curDir = Vector3.Normalize(cur.End-cur.Start);
                     var nextDir = Vector3.Normalize(segment.End - segment.Start);
@@ -170,18 +180,31 @@ namespace CrystaliteSlicer.ToolpathGeneration
 
                         finalPath.Add(new Line(cur.Start, midpoint,0,true));
                         finalPath.Add(new Line(midpoint, cur.End ,0,true));
-
-                        cur = segment;
-
-                        segmentCount = 0;
                     }
                     else
                     {
                         finalPath.Add(cur);
-                        cur = segment;
-
-                        segmentCount = 0;
                     }
+                    prevPoint = cur.End;
+                }
+
+                if (cur.Travel)
+                {
+                    Vector3 path = cur.End - cur.Start;
+                    path.Z = 0;
+                    float climbFraction = cur.End.Z / (cur.End.Z + cur.Start.Z);
+                    var midpoint = cur.Start + path * climbFraction + new Vector3(0, 0, path.Length() * climbFraction * zPerX * 1.25f);
+
+                    finalPath.Add(new Line(cur.Start, midpoint, 0, true));
+                    finalPath.Add(new Line(midpoint, cur.End, 0, true));
+
+                    segmentCount = 0;
+                }
+                else
+                {
+                    finalPath.Add(cur);
+
+                    segmentCount = 0;
                 }
             }
 

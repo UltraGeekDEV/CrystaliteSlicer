@@ -39,6 +39,7 @@ namespace Models
         public static float InnerWallSpeed { get => Instance.innerWallSpeed; set =>  Instance.innerWallSpeed = value; }
         public static float InfillSpeed { get =>    Instance.infillSpeed; set =>     Instance.infillSpeed = value; }
         public static float InfillDensity { get =>  Instance.infillDensity; set =>   Instance.infillDensity = value; }
+        public static int WallCount { get => Instance.wallCount; set => Instance.wallCount = value; }
 
         private Vector3 resolution;
         private Vector3 printVolume;
@@ -59,5 +60,6 @@ namespace Models
         private float outerWallSpeed;
         private float innerWallSpeed;
         private float infillSpeed;
+        private int wallCount;
     }
 }

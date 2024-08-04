@@ -1,4 +1,5 @@
-﻿using Models;
+﻿using CrystaliteSlicer.ToolpathGeneration;
+using Models;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -20,7 +21,7 @@ namespace CrystaliteSlicer.LayerGeneration
 
         float zVoxelsPerX;
         int curLayer;
-        public void GetLayers(IVoxelCollection voxels)
+        public void GetLayers(IVoxelCollection voxels, IGenerateToolpath toolpathGenerator)
         {
             this.voxels = voxels;
             nozzleSize = new Vector3Int(new Vector3(Settings.NozzleDiameter, Settings.NozzleDiameter, 0) / Settings.Resolution);

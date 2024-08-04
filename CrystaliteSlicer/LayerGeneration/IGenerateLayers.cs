@@ -1,4 +1,5 @@
-﻿using Models;
+﻿using CrystaliteSlicer.ToolpathGeneration;
+using Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +10,6 @@ namespace CrystaliteSlicer.LayerGeneration
 {
     public interface IGenerateLayers
     {
-        public void GetLayers(IVoxelCollection voxels);
+        public void GetLayers(IVoxelCollection voxels, IGenerateToolpath toolpathGenerator);
     }
 }

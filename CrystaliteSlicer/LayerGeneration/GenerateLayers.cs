@@ -55,6 +55,9 @@ namespace CrystaliteSlicer.LayerGeneration
                 }
             }));
             Task.WaitAll(tasks.ToArray());
+            var toolpathGeneartionInfo = new (int height, int thickness)[voxels.Size.X,voxels.Size.Y];
+            activeEdge.AsParallel().GroupBy(x => new Vector3Int(x.X, x.Y)).ForAll(x => toolpathGeneartionInfo[x.Key.X,x.Key.Y] = (x.Max(pos => pos.Z), x.Max(pos => pos.Z)- x.Min(pos => pos.Z)));
+            toolpathGenerator.AddLayer(toolpathGeneartionInfo);
 
             Console.WriteLine($"\tFirst Layer Took:{(DateTime.Now - start).TotalMilliseconds}");
             start = DateTime.Now;
@@ -63,6 +66,7 @@ namespace CrystaliteSlicer.LayerGeneration
             double getValidShell = 0;
             double getMaxHeight = 0;
             double getNextLayer = 0;
+            double toolpathPrep = 0;
             int skippedVoxels = 0;
             object lockSkippedVoxels = new object();
 
@@ -323,13 +327,29 @@ namespace CrystaliteSlicer.LayerGeneration
                 Console.WriteLine($"\tFinnished layer {curLayer} with {activeEdge.Count} in active edge");
                 getNextLayer += (DateTime.Now - timerStart).TotalMilliseconds;
                 timerStart = DateTime.Now;
+
+                toolpathGeneartionInfo = new (int height, int thickness)[voxels.Size.X, voxels.Size.Y];
+
+                tasks = Enumerable.Range(0, voxels.Size.Y).AsParallel().Select(y => Task.Run(() =>
+                {
+                    for (int x = 0; x < voxels.Size.X; x++)
+                    {
+                        toolpathGeneartionInfo[x, y] = (nextLayerVoxels[x, y].max, nextLayerVoxels[x, y].max - nextLayerVoxels[x, y].min);
+                    }
+                }));
+                Task.WaitAll(tasks.ToArray());
+
+                toolpathGenerator.AddLayer(toolpathGeneartionInfo);
+
+                toolpathPrep += (DateTime.Now - timerStart).TotalMilliseconds;
+                timerStart = DateTime.Now;
             }
 
             var totalMiliseconds = (DateTime.Now - start).TotalMilliseconds;
             var avgLayer = totalMiliseconds / curLayer;
             Console.WriteLine($"\n\tNonPlanar Layers Took:{totalMiliseconds}");
             Console.WriteLine($"\t\tOf which a layer on avarage took: {avgLayer}");
-            Console.WriteLine($"\t\t\tMade up of:\n\t\t\t\tGet active shell:{(int)(getValidShell / avgLayer / curLayer * 100)}%\n\t\t\t\tGet max height:{(int)(getMaxHeight / curLayer / avgLayer * 100)}%\n\t\t\t\tGet next layer:{(int)(getNextLayer / curLayer / avgLayer * 100)}%");
+            Console.WriteLine($"\t\t\tMade up of:\n\t\t\t\tGet active shell:{(int)(getValidShell / avgLayer / curLayer * 100)}%\n\t\t\t\tGet max height:{(int)(getMaxHeight / curLayer / avgLayer * 100)}%\n\t\t\t\tGet next layer:{(int)(getNextLayer / curLayer / avgLayer * 100)}%\n\t\t\t\tPrepping toolpath:{(int)(toolpathPrep / curLayer / avgLayer * 100)}%");
             Console.WriteLine($"\tHad to skip {skippedVoxels} voxels due to blocking geometry");
             start = DateTime.Now;
         }

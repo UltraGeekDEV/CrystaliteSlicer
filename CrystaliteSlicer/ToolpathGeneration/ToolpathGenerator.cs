@@ -53,7 +53,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                         curDist = int.MinValue;
                     }
 
-                    df[y,x] = curDist;
+                    df[x,y] = curDist;
                 }
                 for (int y = depth-1; y >= 0; y--)
                 {
@@ -73,12 +73,13 @@ namespace CrystaliteSlicer.ToolpathGeneration
                         curDist = int.MinValue;
                     }
 
-                    df[y, x] = curDist;
+                    df[x, y] = curDist;
                 }
             })).ToArray();
             Task.WaitAll(tasks);
             tasks = Enumerable.Range(0, depth).AsParallel().Select(y => Task.Run(() =>
             {
+                points[y] = new List<Vector3Int>();
                 int curDist = int.MinValue;
                 for (int x = 0; x < depth; x++)
                 {
@@ -98,7 +99,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                         curDist = int.MinValue;
                     }
 
-                    df[y, x] = curDist;
+                    df[x, y] = curDist;
                 }
                 curDist = int.MinValue;
                 for (int x = depth - 1; x >= 0; x--)
@@ -119,7 +120,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                         curDist = int.MinValue;
                     }
 
-                    df[y, x] = curDist;
+                    df[x, y] = curDist;
 
                     if (IsLine(curDist))
                     {
@@ -143,7 +144,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
 
             var finalPath = new List<Line>();
 
-            var layerPaths = tasks.Select(x => x.Result).ToList();
+            var layerPaths = tasks.Select(x => x.Result).Where(x=>x.Count > 0).ToList();
 
             Vector3 prevPoint = -Vector3.One;
             foreach (var layer in layerPaths)
@@ -213,6 +214,10 @@ namespace CrystaliteSlicer.ToolpathGeneration
 
         private List<Line> GetLayerPath(List<Vector3Int> points, Dictionary<Vector3Int, int> thickness)
         {
+            if (points.Count < 2)
+            {
+                return new List<Line>();
+            }
             var pheromones = new Dictionary<(Vector3Int, Vector3Int), double>();
 
             for (int i = 0; i < Settings.StepCount; i++)

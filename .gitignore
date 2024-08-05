@@ -457,3 +457,4 @@ $RECYCLE.BIN/
 /DebugSlicer/STLHelper.cs
 /DebugSlicer/Program.cs
 /VisualDebug/VisualDebug.csproj
+/DebugSlicer/JankGcodegenerator.cs

@@ -157,7 +157,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
             {
                 if (count < layerPaths.Count - 1 && count > 0)
                 {
-                    combinedPath.Add(new Line(layerPaths[count - 1].Last().End, layer.First().Start, 0, true));
+                    combinedPath.Add(new Line(layerPaths[count - 1].Last().End, layer.First().Start, -1, true));
                 }
                 foreach (var item in layer)
                 {
@@ -174,7 +174,14 @@ namespace CrystaliteSlicer.ToolpathGeneration
                 if (mergedCount < Settings.SmoothingCount && line.Travel == item.Travel && Vector3.Dot(Vector3.Normalize(line.End-line.Start), Vector3.Normalize(item.End - item.Start)) >= 0.0f)
                 {
                     line.End = item.End;
-                    line.Flow = (line.Flow + item.Flow) * 0.5f;
+                    if (item.Travel && (item.Flow < 0 || line.Flow < 0))
+                    {
+                        line.Flow = -1;
+                    }
+                    else
+                    {
+                        line.Flow = (line.Flow + item.Flow) * 0.5f;
+                    }
                     mergedCount++;
                 }
                 else

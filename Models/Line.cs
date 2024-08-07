@@ -29,5 +29,10 @@ namespace Models
         public Line()
         {
         }
+
+        public double Length()
+        {
+            return (end-start).Length();
+        }
     }
 }

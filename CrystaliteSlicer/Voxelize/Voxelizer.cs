@@ -101,6 +101,54 @@ namespace CrystaliteSlicer.Voxelize
 
             Task.WaitAll(tasks.ToArray());
             Console.WriteLine($"\tCorrosion took:{(DateTime.Now - startTime).TotalMilliseconds}  ms");
+
+            var sdfTasks = Enumerable.Range(0, voxels.Size.X).Select(x => Task.Run(() =>
+            {
+                for (int y = 0; y < voxels.Size.Y; y++)
+                {
+                    int dist = int.MinValue;
+                    for (int z = 0; z < voxels.Size.Z; z++)
+                    {
+                        if (voxels[x, y, z].depth == -1)
+                        {
+                            dist = int.MinValue;
+                        }
+                        else
+                        {
+                            if (dist == int.MinValue)
+                            {
+                                dist = 0;
+                            }
+                            var voxel = voxels[x, y, z];
+                            voxel.depth = dist++;
+                            voxels[x, y, z] = voxel;
+                        }
+                    }
+                    dist = int.MinValue;
+                    for (int z = voxels.Size.Z - 1; z > 0; z--)
+                    {
+                        if (voxels[x, y, z].depth == -1)
+                        {
+                            dist = int.MinValue;
+                        }
+                        else
+                        {
+                            if (dist == int.MinValue)
+                            {
+                                dist = 0;
+                            }
+                            var voxel = voxels[x, y, z];
+                            dist = Math.Min(dist, voxel.depth);
+                            voxel.depth = dist;
+                            dist++;
+                            voxels[x, y, z] = voxel;
+                        }
+                    }
+                }
+            })).ToArray();
+
+            Task.WaitAll(sdfTasks);
+
             return voxels;
         }
         

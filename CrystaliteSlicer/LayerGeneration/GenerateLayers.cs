@@ -324,7 +324,7 @@ namespace CrystaliteSlicer.LayerGeneration
                         }
                     }
                 }
-                Console.WriteLine($"\tFinnished layer {curLayer} with {activeEdge.Count} in active edge");
+                //Console.WriteLine($"\tFinnished layer {curLayer} with {activeEdge.Count} in active edge");
                 getNextLayer += (DateTime.Now - timerStart).TotalMilliseconds;
                 timerStart = DateTime.Now;
 

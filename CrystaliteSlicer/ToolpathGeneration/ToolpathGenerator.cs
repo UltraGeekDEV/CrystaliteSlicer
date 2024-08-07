@@ -12,10 +12,11 @@ namespace CrystaliteSlicer.ToolpathGeneration
     {
         int nozzleVoxelSize;
         int halfNozzleVoxelSize;
+        IVoxelCollection voxels;
         List<List<Vector3Int>> layers;
         List<Dictionary<Vector3Int, int>> thickness;
         float zPerX;
-        public ToolpathGenerator()
+        public ToolpathGenerator(IVoxelCollection voxels)
         {
             layers = new List<List<Vector3Int>>();
             thickness = new List<Dictionary<Vector3Int, int>>();
@@ -23,6 +24,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
             nozzleVoxelSize = (int)(Settings.NozzleDiameter / Settings.Resolution.X);
             halfNozzleVoxelSize = nozzleVoxelSize / 2;
             zPerX = MathF.Tan(Settings.MaxSlope * (MathF.PI / 180.0f));
+            this.voxels = voxels;
         }
         public void AddLayer((int height, int thickness)[,] layer)
         {
@@ -32,12 +34,12 @@ namespace CrystaliteSlicer.ToolpathGeneration
             int[,] df = new int[width, depth];
             List<Vector3Int>[] points = new List<Vector3Int>[depth];
 
-            var tasks = Enumerable.Range(0, width).AsParallel().Select(x => Task.Run(() =>
+            var tasks = Enumerable.Range(0, width).Select(x => Task.Run(() =>
             {
                 int curDist = int.MinValue;
                 for (int y = 0; y < depth; y++)
                 {
-                    if (layer[x,y].height != -1)
+                    if (layer[x,y].height != 0)
                     {
                         if (curDist < 0)
                         {
@@ -57,7 +59,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                 }
                 for (int y = depth-1; y >= 0; y--)
                 {
-                    if (layer[x, y].height != -1)
+                    if (layer[x, y].height != 0)
                     {
                         if (curDist < 0)
                         {
@@ -65,7 +67,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                         }
                         else
                         {
-                            curDist = Math.Min(curDist++, df[x,y]);
+                            curDist = Math.Min(++curDist, df[x,y]);
                         }
                     }
                     else
@@ -77,13 +79,13 @@ namespace CrystaliteSlicer.ToolpathGeneration
                 }
             })).ToArray();
             Task.WaitAll(tasks);
-            tasks = Enumerable.Range(0, depth).AsParallel().Select(y => Task.Run(() =>
+            tasks = Enumerable.Range(0, depth).Select(y => Task.Run(() =>
             {
                 points[y] = new List<Vector3Int>();
                 int curDist = int.MinValue;
-                for (int x = 0; x < depth; x++)
+                for (int x = 0; x < width; x++)
                 {
-                    if (layer[x, y].height != -1)
+                    if (layer[x, y].height != 0)
                     {
                         if (curDist < 0)
                         {
@@ -91,7 +93,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                         }
                         else
                         {
-                            curDist = Math.Min(curDist++, df[x, y]);
+                            curDist = Math.Min(++curDist, df[x, y]);
                         }
                     }
                     else
@@ -102,9 +104,9 @@ namespace CrystaliteSlicer.ToolpathGeneration
                     df[x, y] = curDist;
                 }
                 curDist = int.MinValue;
-                for (int x = depth - 1; x >= 0; x--)
+                for (int x = width - 1; x >= 0; x--)
                 {
-                    if (layer[x, y].height != -1)
+                    if (layer[x, y].height != 0)
                     {
                         if (curDist < 0)
                         {
@@ -112,7 +114,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                         }
                         else
                         {
-                            curDist = Math.Min(curDist++, df[x, y]);
+                            curDist = Math.Min(++curDist, df[x, y]);
                         }
                     }
                     else
@@ -122,7 +124,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
 
                     df[x, y] = curDist;
 
-                    if (IsLine(curDist))
+                    if (IsLine(curDist, x, y, layer[x,y].height))
                     {
                         points[y].Add(new Vector3Int(x, y, layer[x,y].height));
                     }
@@ -133,82 +135,56 @@ namespace CrystaliteSlicer.ToolpathGeneration
             layers.Add(curLayer);
             thickness.Add(curLayer.AsParallel().ToDictionary(x => x, x => layer[x.X,x.Y].thickness)); 
         }
-        private bool IsLine(int value)
+        private bool IsLine(int value,int x,int y, int z)
         {
-            return Math.Abs((value % nozzleVoxelSize)-halfNozzleVoxelSize) == 0 && value/nozzleVoxelSize < Settings.WallCount && value >= 0;
+            return  Math.Abs((value % nozzleVoxelSize)-halfNozzleVoxelSize) == 0  && value >= 0 && (value / nozzleVoxelSize < Settings.WallCount || voxels[x,y,z].depth < Settings.TopThickness);
         }
         public IEnumerable<Line> GetPath()
         {
             var tasks = layers.Select((x, id) => Task<List<Line>>.Run(() => GetLayerPath(x, thickness[id]))).ToArray();
             Task.WaitAll(tasks);
 
+            var combinedPath = new List<Line>();
             var finalPath = new List<Line>();
 
             var layerPaths = tasks.Select(x => x.Result).Where(x=>x.Count > 0).ToList();
 
             Vector3 prevPoint = -Vector3.One;
+
+            int count = 0;
+
             foreach (var layer in layerPaths)
             {
-                int segmentCount = 0;
-                Line cur = layer.First();
-                if (prevPoint.Z > 0)
+                if (count < layerPaths.Count - 1 && count > 0)
                 {
-                    Vector3 path = cur.Start - prevPoint;
-                    path.Z = 0;
-                    float climbFraction = cur.Start.Z / (cur.Start.Z + prevPoint.Z);
-                    var midpoint = prevPoint + path * climbFraction + new Vector3(0, 0, path.Length() * climbFraction * zPerX * 1.25f);
-
-                    finalPath.Add(new Line(prevPoint, midpoint, 0, true));
-                    finalPath.Add(new Line(midpoint, cur.Start, 0, true));
+                    combinedPath.Add(new Line(layerPaths[count - 1].Last().End, layer.First().Start, 0, true));
                 }
-
-                foreach (var segment in layer.Skip(1))
+                foreach (var item in layer)
                 {
-                    var curDir = Vector3.Normalize(cur.End-cur.Start);
-                    var nextDir = Vector3.Normalize(segment.End - segment.Start);
-
-                    if (Vector3.Dot(curDir, nextDir) >= Settings.SmoothingAngle && segmentCount < Settings.SmoothingCount && cur.Travel.Equals(segment.Travel))
-                    {
-                        cur = new Line(cur.Start,segment.End,(cur.Flow+segment.Flow)/2,cur.Travel);
-                        segmentCount++;
-                    }
-                    else if(cur.Travel)
-                    {
-                        Vector3 path = cur.End - cur.Start;
-                        path.Z = 0;
-                        float climbFraction = cur.End.Z / (cur.End.Z + cur.Start.Z);
-                        var midpoint = cur.Start + path * climbFraction + new Vector3(0, 0, path.Length() * climbFraction * zPerX * 1.25f);
-
-                        finalPath.Add(new Line(cur.Start, midpoint,0,true));
-                        finalPath.Add(new Line(midpoint, cur.End ,0,true));
-                    }
-                    else
-                    {
-                        finalPath.Add(cur);
-                    }
-                    prevPoint = cur.End;
+                    combinedPath.Add(item);
                 }
+                count++;
+            }
 
-                if (cur.Travel)
+            int mergedCount = 0;
+            Line line = combinedPath.First();
+
+            foreach (var item in combinedPath.Skip(1))
+            {
+                if (mergedCount < Settings.SmoothingCount && line.Travel == item.Travel && Vector3.Dot(Vector3.Normalize(line.End-line.Start), Vector3.Normalize(item.End - item.Start)) >= 0.0f)
                 {
-                    Vector3 path = cur.End - cur.Start;
-                    path.Z = 0;
-                    float climbFraction = cur.End.Z / (cur.End.Z + cur.Start.Z);
-                    var midpoint = cur.Start + path * climbFraction + new Vector3(0, 0, path.Length() * climbFraction * zPerX * 1.25f);
-
-                    finalPath.Add(new Line(cur.Start, midpoint, 0, true));
-                    finalPath.Add(new Line(midpoint, cur.End, 0, true));
-
-                    segmentCount = 0;
+                    line.End = item.End;
+                    line.Flow = (line.Flow + item.Flow) * 0.5f;
+                    mergedCount++;
                 }
                 else
                 {
-                    finalPath.Add(cur);
-
-                    segmentCount = 0;
+                    finalPath.Add(line);
+                    mergedCount = 0;
+                    line = item;
                 }
             }
-
+            finalPath.Add(line);
             return finalPath;
         }
 
@@ -245,7 +221,23 @@ namespace CrystaliteSlicer.ToolpathGeneration
 
                     foreach (var trail in ant.Path)
                     {
-                        pheromones[trail] += overallPathEval;
+                        if (pheromones.ContainsKey(trail))
+                        {
+                            pheromones[trail] += overallPathEval;
+                        }
+                        else
+                        {
+                            pheromones[trail] = overallPathEval;
+                        }
+                        var reverseTrail = (trail.Item2, trail.Item1);
+                        if (pheromones.ContainsKey(reverseTrail))
+                        {
+                            pheromones[reverseTrail] += overallPathEval;
+                        }
+                        else
+                        {
+                            pheromones[reverseTrail] = overallPathEval;
+                        }
                     }
                 }
             }
@@ -258,8 +250,28 @@ namespace CrystaliteSlicer.ToolpathGeneration
 
             while (toTraverse.Count > 0)
             {
-                var next = toTraverse.OrderByDescending(x => pheromones[(cur, x)]).First();
-                retPath.Add(new Line(cur * Settings.Resolution, next * Settings.Resolution, (thickness[cur] + thickness[next])*0.5f,(next-cur).SQRMagnitude() > 2.5));
+                Vector3Int next = Vector3Int.One*-1;
+                double nextPoint = double.MinValue;
+                foreach (var item in toTraverse)
+                {
+                    if (pheromones.ContainsKey((cur,item)) && pheromones[(cur, item)] > nextPoint)
+                    {
+                        nextPoint = pheromones[(cur, item)];
+                        next = item;
+                    }
+                    else
+                    {
+                        var dist = -(next - cur).SQRMagnitude();
+                        if (dist > nextPoint)
+                        {
+                            nextPoint = dist;
+                            next = item;
+                        }
+                    }
+                }
+                var dir = next - cur;
+                dir = new Vector3Int(Math.Abs(dir.X), Math.Abs(dir.Y), Math.Abs(dir.Z));
+                retPath.Add(new Line(cur * Settings.Resolution, next * Settings.Resolution, (thickness[cur] + thickness[next])*0.5f,!(dir.X <= 2 && dir.Y <= 2 && dir.Z <= 2)));
                 toTraverse.Remove(next);
                 cur = next;
             }

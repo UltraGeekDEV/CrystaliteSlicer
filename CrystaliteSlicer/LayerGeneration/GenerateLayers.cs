@@ -334,7 +334,7 @@ namespace CrystaliteSlicer.LayerGeneration
                 {
                     for (int x = 0; x < voxels.Size.X; x++)
                     {
-                        toolpathGeneartionInfo[x, y] = (nextLayerVoxels[x, y].max, nextLayerVoxels[x, y].max - nextLayerVoxels[x, y].min);
+                        toolpathGeneartionInfo[x, y] = (nextLayerVoxels[x, y].max, nextLayerVoxels[x, y].max - nextLayerVoxels[x, y].min + 1);
                     }
                 }));
                 Task.WaitAll(tasks.ToArray());

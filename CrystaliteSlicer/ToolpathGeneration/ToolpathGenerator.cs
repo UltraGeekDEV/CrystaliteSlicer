@@ -166,33 +166,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                 count++;
             }
 
-            int mergedCount = 0;
-            Line line = combinedPath.First();
-
-            foreach (var item in combinedPath.Skip(1))
-            {
-                if (mergedCount < Settings.SmoothingCount && line.Travel == item.Travel && Vector3.Dot(Vector3.Normalize(line.End-line.Start), Vector3.Normalize(item.End - item.Start)) >= 0.0f)
-                {
-                    line.End = item.End;
-                    if (item.Travel && (item.Flow < 0 || line.Flow < 0))
-                    {
-                        line.Flow = -1;
-                    }
-                    else
-                    {
-                        line.Flow = (line.Flow + item.Flow) * 0.5f;
-                    }
-                    mergedCount++;
-                }
-                else
-                {
-                    finalPath.Add(line);
-                    mergedCount = 0;
-                    line = item;
-                }
-            }
-            finalPath.Add(line);
-            return finalPath;
+            return combinedPath;
         }
 
         private List<Line> GetLayerPath(List<Vector3Int> points, Dictionary<Vector3Int, int> thickness)

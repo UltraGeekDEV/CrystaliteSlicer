@@ -145,11 +145,8 @@ namespace CrystaliteSlicer.ToolpathGeneration
             Task.WaitAll(tasks);
 
             var combinedPath = new List<Line>();
-            var finalPath = new List<Line>();
 
             var layerPaths = tasks.Select(x => x.Result).Where(x=>x.Count > 0).ToList();
-
-            Vector3 prevPoint = -Vector3.One;
 
             int count = 0;
 

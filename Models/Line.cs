@@ -34,5 +34,15 @@ namespace Models
         {
             return (end-start).Length();
         }
+
+        public double Distance(Line other)
+        {
+            return Math.Min(Math.Min((other.start-start).Length(),(other.end-end).Length()),Math.Min((other.start - end).Length(),(other.end-start).Length()));
+        }
+
+        public Line Flip()
+        {
+            return new Line(end, start, flow, travel);
+        }
     }
 }

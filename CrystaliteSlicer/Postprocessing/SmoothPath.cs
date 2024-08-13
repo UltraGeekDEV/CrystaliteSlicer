@@ -10,7 +10,7 @@ namespace CrystaliteSlicer.Postprocessing
 {
     public class SmoothPath : IPostprocessToolpath
     {
-        public List<Line> Process(List<Line> path)
+        public IEnumerable<Line> Process(IEnumerable<Line> path)
         {
             int mergedCount = 0;
             Line line = path.First();
@@ -28,7 +28,7 @@ namespace CrystaliteSlicer.Postprocessing
                     }
                     else
                     {
-                        line.Flow = (line.Flow + item.Flow) * 0.5f;
+                        line.Flow = (line.Flow * (mergedCount + 1) + item.Flow) / (mergedCount + 2);
                     }
                     mergedCount++;
                 }

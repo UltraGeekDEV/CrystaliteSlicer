@@ -9,6 +9,6 @@ namespace CrystaliteSlicer.Postprocessing
 {
     public interface IPostprocessToolpath
     {
-        public List<Line> Process(List<Line> path);
+        public IEnumerable<Line> Process(IEnumerable<Line> path);
     }
 }

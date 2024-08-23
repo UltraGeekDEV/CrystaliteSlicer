@@ -20,7 +20,7 @@ namespace CrystaliteSlicer.InfillGeneration
 
         public bool IsFill(float distanceToWall, float distanceToCeiling, int x, int y, int z)
         {
-            return x % Math.Max((int)((1 - Settings.InfillDensity) * gridSizeX), 1) == 0 && y % Math.Max((int)((1 - Settings.InfillDensity) * gridSizeY), 1) == 0;
+            return (x % Math.Max((int)((1 - Settings.InfillDensity) * gridSizeX), 1) == 0 || y % Math.Max((int)((1 - Settings.InfillDensity) * gridSizeY), 1) == 0) && !(x % Math.Max((int)((1 - Settings.InfillDensity) * gridSizeX), 1) == 0 && y % Math.Max((int)((1 - Settings.InfillDensity) * gridSizeY), 1) == 0);
         }
 
     }

@@ -13,6 +13,7 @@ namespace Models
         public int Y { get; set; }
         public int Z { get; set; }
         public static Vector3Int One { get => new Vector3Int(1,1,1); }
+        public static Vector3Int Zero { get => new Vector3Int(0,0,0); }
 
         public override int GetHashCode()
         {

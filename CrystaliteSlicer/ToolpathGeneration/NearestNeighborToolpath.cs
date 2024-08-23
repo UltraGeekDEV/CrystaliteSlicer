@@ -8,18 +8,31 @@ using System.Threading.Tasks;
 
 namespace CrystaliteSlicer.ToolpathGeneration
 {
-    public class ToolpathGenerator : IGenerateToolpath
+    public class NearestNeighborToolpath : IGenerateToolpath
     {
+        private static class LUTS
+        {
+            public static List<Vector3Int> neighbours = new List<Vector3Int>()
+            {
+                new Vector3Int(1,0),
+                new Vector3Int(1,1),
+                new Vector3Int(0,1),
+                new Vector3Int(-1,1),
+                new Vector3Int(-1,0),
+                new Vector3Int(-1,-1),
+                new Vector3Int(0,-1),
+                new Vector3Int(1,-1)
+            };
+        }
+
         int nozzleVoxelSize;
         int halfNozzleVoxelSize;
         IVoxelCollection voxels;
-        List<List<Vector3Int>> layers;
-        List<Dictionary<Vector3Int, int>> thickness;
+        List<Dictionary<Vector3Int, (int height, int thickness, int wallCount)>> layers;
         float zPerX;
-        public ToolpathGenerator(IVoxelCollection voxels)
+        public NearestNeighborToolpath(IVoxelCollection voxels)
         {
-            layers = new List<List<Vector3Int>>();
-            thickness = new List<Dictionary<Vector3Int, int>>();
+            layers = new List<Dictionary<Vector3Int, (int height, int thickness, int wallCount)>>();
 
             nozzleVoxelSize = (int)(Settings.NozzleDiameter / Settings.Resolution.X);
             halfNozzleVoxelSize = nozzleVoxelSize / 2;
@@ -39,7 +52,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                 int curDist = int.MinValue;
                 for (int y = 0; y < depth; y++)
                 {
-                    if (layer[x,y].height != 0)
+                    if (layer[x, y].height != 0)
                     {
                         if (curDist < 0)
                         {
@@ -55,9 +68,9 @@ namespace CrystaliteSlicer.ToolpathGeneration
                         curDist = int.MinValue;
                     }
 
-                    df[x,y] = curDist;
+                    df[x, y] = curDist;
                 }
-                for (int y = depth-1; y >= 0; y--)
+                for (int y = depth - 1; y >= 0; y--)
                 {
                     if (layer[x, y].height != 0)
                     {
@@ -67,7 +80,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                         }
                         else
                         {
-                            curDist = Math.Min(++curDist, df[x,y]);
+                            curDist = Math.Min(++curDist, df[x, y]);
                         }
                     }
                     else
@@ -124,24 +137,23 @@ namespace CrystaliteSlicer.ToolpathGeneration
 
                     df[x, y] = curDist;
 
-                    if (IsLine(curDist, x, y, layer[x,y].height))
+                    if (IsLine(curDist, x, y, layer[x, y].height))
                     {
-                        points[y].Add(new Vector3Int(x, y, layer[x,y].height));
+                        points[y].Add(new Vector3Int(x, y, layer[x, y].height));
                     }
                 }
             })).ToArray();
             Task.WaitAll(tasks);
-            var curLayer = points.AsParallel().SelectMany(x => x).ToList();
+            var curLayer = points.AsParallel().SelectMany(x => x).ToDictionary(x => new Vector3Int(x.X, x.Y), x => (x.Z, layer[x.X, x.Y].thickness, df[x.X, x.Y] / nozzleVoxelSize));
             layers.Add(curLayer);
-            thickness.Add(curLayer.AsParallel().ToDictionary(x => x, x => layer[x.X,x.Y].thickness)); 
         }
-        private bool IsLine(int value,int x,int y, int z)
+        private bool IsLine(int value, int x, int y, int z)
         {
-            return  Math.Abs((value % nozzleVoxelSize)-halfNozzleVoxelSize) == 0  && value >= 0 && (value / nozzleVoxelSize < Settings.WallCount || voxels[x,y,z].depth < Settings.TopThickness);
+            return Math.Abs((value % nozzleVoxelSize) - halfNozzleVoxelSize) == 0 && value >= 0 && (value / nozzleVoxelSize < Settings.WallCount || voxels[x, y, z].depth < Settings.TopThickness);
         }
         public IEnumerable<Line> GetPath()
         {
-            var tasks = layers.Select((x, id) => Task<List<Line>>.Run(() => GetLayerPath(x, thickness[id]))).ToArray();
+            var tasks = layers.SelectMany(x => x.GroupBy(x=>x.Value.wallCount).Select(y => Task<List<Line>>.Run(() => GetLayerPath(y.ToDictionary(x=>x.Key,x=>x.Value))))).ToArray();
             Task.WaitAll(tasks);
 
             var combinedPath = new List<Line>();
@@ -166,92 +178,35 @@ namespace CrystaliteSlicer.ToolpathGeneration
             return combinedPath;
         }
 
-        private List<Line> GetLayerPath(List<Vector3Int> points, Dictionary<Vector3Int, int> thickness)
+        private List<Line> GetLayerPath(Dictionary<Vector3Int, (int height, int thickness, int wallCount)> pointData)
         {
-            if (points.Count < 2)
+            if (pointData.Count < 2)
             {
                 return new List<Line>();
             }
-            var pheromones = new Dictionary<(Vector3Int, Vector3Int), double>();
 
-            for (int i = 0; i < Settings.StepCount; i++)
-            {
-                foreach (var item in pheromones.Keys.ToList())
-                {
-                    pheromones[item] = pheromones[item] * Settings.PheromoneDecayFactor;
-                }
-
-                var ants = Enumerable.Range(0, Settings.AntCount).Select(x => new Ant(pheromones)).ToList();
-                var tasks = ants.Select(x => Task.Run(() => x.Traverse(points.ToHashSet()))).ToArray();
-                Task.WaitAll(tasks);
-
-                foreach (var ant in ants)
-                {
-                    double dist = 0, deltaDir = 0;
-                    Vector3 prevDir = Vector3.Zero;
-                    foreach (var trail in ant.Path)
-                    {
-                        dist += (trail.Item1 - trail.Item2).Magnitude();
-                        deltaDir += 1 + Vector3.Dot(prevDir, (trail.Item2 - trail.Item1)*1.0f);
-                    }
-
-                    double overallPathEval = 1 / dist;
-
-                    foreach (var trail in ant.Path)
-                    {
-                        if (pheromones.ContainsKey(trail))
-                        {
-                            pheromones[trail] += overallPathEval;
-                        }
-                        else
-                        {
-                            pheromones[trail] = overallPathEval;
-                        }
-                        var reverseTrail = (trail.Item2, trail.Item1);
-                        if (pheromones.ContainsKey(reverseTrail))
-                        {
-                            pheromones[reverseTrail] += overallPathEval;
-                        }
-                        else
-                        {
-                            pheromones[reverseTrail] = overallPathEval;
-                        }
-                    }
-                }
-            }
-
-            var toTraverse = points.ToList();
-
-            Vector3Int cur = toTraverse.First();
-            toTraverse.Remove(cur);
             var retPath = new List<Line>();
 
-            while (toTraverse.Count > 0)
+            var cur = pointData.First();
+            pointData.Remove(cur.Key);
+
+            while(pointData.Count > 0)
             {
-                Vector3Int next = Vector3Int.One*-1;
-                double nextPoint = double.MinValue;
-                foreach (var item in toTraverse)
+                var candidates = LUTS.neighbours.Select(x => x + cur.Key).Where(pointData.ContainsKey);
+                KeyValuePair<Vector3Int, (int height, int thickness, int wallCount)> pick;
+                if (candidates.Any())
                 {
-                    if (pheromones.ContainsKey((cur,item)) && pheromones[(cur, item)] > nextPoint)
-                    {
-                        nextPoint = pheromones[(cur, item)];
-                        next = item;
-                    }
-                    else
-                    {
-                        var dist = -(next - cur).SQRMagnitude();
-                        if (dist > nextPoint)
-                        {
-                            nextPoint = dist;
-                            next = item;
-                        }
-                    }
+                    var pickPos = candidates.First();
+                    pick = new KeyValuePair<Vector3Int, (int height, int thickness, int wallCount)>(pickPos, pointData[pickPos]);
                 }
-                var dir = next - cur;
-                dir = new Vector3Int(Math.Abs(dir.X), Math.Abs(dir.Y), Math.Abs(dir.Z));
-                retPath.Add(new Line(cur * Settings.Resolution, next * Settings.Resolution, (thickness[cur] + thickness[next])*0.5f,!(dir.X <= 2 && dir.Y <= 2 && dir.Z <= 2)));
-                toTraverse.Remove(next);
-                cur = next;
+                else
+                {
+                    pick = pointData.MinBy(x => (x.Key - cur.Key).SQRMagnitude());
+                }
+
+                retPath.Add(new Line(new Vector3Int(cur.Key.X, cur.Key.Y, cur.Value.height) * Settings.Resolution, new Vector3Int(pick.Key.X, pick.Key.Y, pick.Value.height) * Settings.Resolution, (cur.Value.thickness+pick.Value.thickness)*0.5f,Math.Abs(pick.Key.X-cur.Key.X) > 1 || Math.Abs(pick.Key.Y - cur.Key.Y) > 1));
+                cur = pick;
+                pointData.Remove(cur.Key);
             }
 
             return retPath;

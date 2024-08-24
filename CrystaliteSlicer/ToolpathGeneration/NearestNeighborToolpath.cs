@@ -163,7 +163,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
         }
         public IEnumerable<Line> GetPath()
         {
-            var tasks = layers.SelectMany(x => x.GroupBy(x=>x.Value.wallCount).Select(y => Task<List<Line>>.Run(() => GetLayerPath(y.ToDictionary(x=>x.Key,x=>x.Value))))).ToArray();
+            var tasks = layers.Select(y => Task<List<Line>>.Run(() => GetLayerPath(y))).ToArray();
             Task.WaitAll(tasks);
 
             var combinedPath = new List<Line>();

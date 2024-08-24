@@ -1,4 +1,5 @@
 ﻿using Models;
+using Models.GcodeInfo;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,36 +13,45 @@ namespace CrystaliteSlicer.Postprocessing
     {
         public IEnumerable<Line> Process(IEnumerable<Line> path)
         {
+
+            var paddingElement = path.Last().Flip();
+            path.Concat(new List<Line>() { paddingElement });
+            
             int mergedCount = 0;
             Line line = path.First();
-
             List<Line> finalPath = new List<Line>();
+            Vector3 initialDir = Vector3.Normalize(line.End - line.Start);
 
             foreach (var item in path.Skip(1))
             {
-                if (mergedCount < Settings.SmoothingCount && line.Travel == item.Travel && Vector3.Dot(Vector3.Normalize(line.End - line.Start), Vector3.Normalize(item.End - item.Start)) >= 0.0f)
+                if (!IsSpecialLine(item))
                 {
-                    line.End = item.End;
-                    if (item.Travel && (item.Flow < 0 || line.Flow < 0))
+                    if ((line.End - item.Start).Length() < Settings.Resolution.Length() && mergedCount < Settings.SmoothingCount && !item.Travel && !line.Travel && Vector3.Dot(initialDir, Vector3.Normalize(item.End - item.Start)) >= Settings.SmoothingAngle)
                     {
-                        line.Flow = -1;
+                        line.End = item.End;
+                        line.Flow = (line.Flow * (mergedCount + 1) + item.Flow) / (mergedCount + 2);
+                        mergedCount++;
                     }
                     else
                     {
-                        line.Flow = (line.Flow * (mergedCount + 1) + item.Flow) / (mergedCount + 2);
+                        finalPath.Add(line);
+                        mergedCount = 0;
+                        line = item;
+                        initialDir = Vector3.Normalize(line.End - line.Start);
                     }
-                    mergedCount++;
                 }
                 else
                 {
-                    finalPath.Add(line);
-                    mergedCount = 0;
-                    line = item;
+                    finalPath.Add(item);
                 }
             }
-            finalPath.Add(line);
 
             return finalPath;
+        }
+
+        private bool IsSpecialLine(Line line)
+        {
+            return line is InfoLine;
         }
     }
 }

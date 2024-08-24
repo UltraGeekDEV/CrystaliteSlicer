@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Models.GcodeInfo
 {
-    public class WallLine:Line
+    public class WallLine:InfoLine
     {
     }
 }

@@ -50,6 +50,7 @@ namespace Models
         public static float SmoothingAngle { get => Instance.smoothingAngle; set => Instance.smoothingAngle = value; }
         public static int SmoothingCount { get => Instance.smoothingCount; set => Instance.smoothingCount = value; }
         public static int TopThickness { get => Instance.topThickness; set => Instance.topThickness = value; }
+        public static float TravelSpeed { get => Instance.travelSpeed; set => Instance.travelSpeed = value; }
 
         //model settings -to be removed-
         private Vector3 rotation;
@@ -72,6 +73,7 @@ namespace Models
         private float innerWallSpeed;
         private float infillSpeed;
         private float infillDensity;
+        private float travelSpeed;
         private int wallCount;
         private int topThickness;
 

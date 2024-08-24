@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Models.GcodeInfo
 {
-    public class InfillLine : InfoLine
+    public class NewLayerLine : InfoLine
     {
     }
 }

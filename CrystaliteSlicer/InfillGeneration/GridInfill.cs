@@ -9,18 +9,16 @@ namespace CrystaliteSlicer.InfillGeneration
 {
     public class GridInfill : IInfill
     {
-        public int gridSizeX;
-        public int gridSizeY;
+        int stepSize;
 
-        public GridInfill(int gridSizeX, int gridSizeY)
+        public GridInfill()
         {
-            this.gridSizeX = gridSizeX;
-            this.gridSizeY = gridSizeY;
+            stepSize = (int)(2 * Settings.NozzleDiameter / (Settings.Resolution.X*Settings.InfillDensity));
         }
 
         public bool IsFill(float distanceToWall, float distanceToCeiling, int x, int y, int z)
         {
-            return (x % Math.Max((int)((1 - Settings.InfillDensity) * gridSizeX), 1) == 0 || y % Math.Max((int)((1 - Settings.InfillDensity) * gridSizeY), 1) == 0) && !(x % Math.Max((int)((1 - Settings.InfillDensity) * gridSizeX), 1) == 0 && y % Math.Max((int)((1 - Settings.InfillDensity) * gridSizeY), 1) == 0);
+            return x % stepSize == 0 ^ y % stepSize == 0;
         }
 
     }

@@ -1,4 +1,5 @@
-﻿using Models;
+﻿using CrystaliteSlicer.InfillGeneration;
+using Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,10 +29,12 @@ namespace CrystaliteSlicer.ToolpathGeneration
         int nozzleVoxelSize;
         int halfNozzleVoxelSize;
         IVoxelCollection voxels;
+        IInfill infillPattern;
         List<Dictionary<Vector3Int, (int height, int thickness, int wallCount)>> layers;
         float zPerX;
-        public NearestNeighborToolpath(IVoxelCollection voxels)
+        public NearestNeighborToolpath(IVoxelCollection voxels, IInfill infillPattern)
         {
+            this.infillPattern = infillPattern;
             layers = new List<Dictionary<Vector3Int, (int height, int thickness, int wallCount)>>();
 
             nozzleVoxelSize = (int)(Settings.NozzleDiameter / Settings.Resolution.X);
@@ -137,19 +140,26 @@ namespace CrystaliteSlicer.ToolpathGeneration
 
                     df[x, y] = curDist;
 
-                    if (IsLine(curDist, x, y, layer[x, y].height))
+                    bool isLine = IsLine(curDist, x, y, layer[x, y].height);
+                    bool isShell = IsShell(curDist, x, y, layer[x, y].height);
+                    bool isFill = infillPattern.IsFill(curDist, voxels[x, y, layer[x, y].height].depth, x, y, layer[x, y].height);
+                    if (isLine || (!isShell && isFill))
                     {
                         points[y].Add(new Vector3Int(x, y, layer[x, y].height));
                     }
                 }
             })).ToArray();
             Task.WaitAll(tasks);
-            var curLayer = points.AsParallel().SelectMany(x => x).ToDictionary(x => new Vector3Int(x.X, x.Y), x => (x.Z, layer[x.X, x.Y].thickness, df[x.X, x.Y] / nozzleVoxelSize));
+            var curLayer = points.AsParallel().SelectMany(x => x).ToDictionary(x => new Vector3Int(x.X, x.Y), x => (x.Z, layer[x.X, x.Y].thickness, Math.Min(df[x.X, x.Y] / nozzleVoxelSize,Settings.WallCount)));
             layers.Add(curLayer);
         }
         private bool IsLine(int value, int x, int y, int z)
         {
-            return Math.Abs((value % nozzleVoxelSize) - halfNozzleVoxelSize) == 0 && value >= 0 && (value / nozzleVoxelSize < Settings.WallCount || voxels[x, y, z].depth < Settings.TopThickness);
+            return Math.Abs((value % nozzleVoxelSize) - halfNozzleVoxelSize) == 0 && value >= 0 && IsShell(value,x,y,z);
+        }
+        private bool IsShell(int value, int x, int y, int z)
+        {
+            return value / nozzleVoxelSize < Settings.WallCount || voxels[x, y, z].depth < Settings.TopThickness;
         }
         public IEnumerable<Line> GetPath()
         {
@@ -204,7 +214,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                     pick = pointData.MinBy(x => (x.Key - cur.Key).SQRMagnitude());
                 }
 
-                retPath.Add(new Line(new Vector3Int(cur.Key.X, cur.Key.Y, cur.Value.height) * Settings.Resolution, new Vector3Int(pick.Key.X, pick.Key.Y, pick.Value.height) * Settings.Resolution, (cur.Value.thickness+pick.Value.thickness)*0.5f,Math.Abs(pick.Key.X-cur.Key.X) > 1 || Math.Abs(pick.Key.Y - cur.Key.Y) > 1));
+                retPath.Add(new Line(new Vector3Int(cur.Key.X, cur.Key.Y, cur.Value.height) * Settings.Resolution+Settings.Offset, new Vector3Int(pick.Key.X, pick.Key.Y, pick.Value.height) * Settings.Resolution + Settings.Offset, (cur.Value.thickness+pick.Value.thickness)*0.5f,Math.Abs(pick.Key.X-cur.Key.X) > 1 || Math.Abs(pick.Key.Y - cur.Key.Y) > 1));
                 cur = pick;
                 pointData.Remove(cur.Key);
             }

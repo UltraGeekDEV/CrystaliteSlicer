@@ -9,6 +9,6 @@ namespace CrystaliteSlicer.GcodeGeneration
 {
     public interface IConvertGcode
     {
-        public string GetGcode(IEnumerable<Line> path);
+        public List<string> GetGcode(IEnumerable<Line> path);
     }
 }

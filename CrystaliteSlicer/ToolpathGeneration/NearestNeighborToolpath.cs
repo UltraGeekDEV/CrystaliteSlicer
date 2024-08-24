@@ -1,5 +1,6 @@
 ﻿using CrystaliteSlicer.InfillGeneration;
 using Models;
+using Models.GcodeInfo;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -163,12 +164,13 @@ namespace CrystaliteSlicer.ToolpathGeneration
         }
         public IEnumerable<Line> GetPath()
         {
-            var tasks = layers.Select(y => Task<List<Line>>.Run(() => GetLayerPath(y))).ToArray();
-            Task.WaitAll(tasks);
+            //var tasks = layers.Select(y => Task<List<Line>>.Run(() => GetLayerPath(y))).ToArray();
+            var tasks = layers.Select(x=>x.GroupBy(y=>y.Value.wallCount)).Select(x=>x.Select(y => (Task<List<Line>>.Run(() => GetLayerPath(y.ToDictionary(z=>z.Key,z=>(z.Value.height,z.Value.thickness)),y.Key)),y.Key)));
+            Task.WaitAll(tasks.SelectMany(x=>x.Select(y=>y.Item1)).ToArray());
 
             var combinedPath = new List<Line>();
 
-            var layerPaths = tasks.Select(x => x.Result).Where(x => x.Count > 0).ToList();
+            var layerPaths = tasks.SelectMany(x => x.OrderBy(y=>y.Key).Select(y=>y.Item1.Result)).ToList();
 
             int count = 0;
 
@@ -188,7 +190,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
             return combinedPath;
         }
 
-        private List<Line> GetLayerPath(Dictionary<Vector3Int, (int height, int thickness, int wallCount)> pointData)
+        private List<Line> GetLayerPath(Dictionary<Vector3Int, (int height, int thickness)> pointData, int wallCount)
         {
             if (pointData.Count < 2)
             {
@@ -197,17 +199,30 @@ namespace CrystaliteSlicer.ToolpathGeneration
 
             var retPath = new List<Line>();
 
+            if (wallCount == 0)
+            {
+                retPath.Add(new WallLine());
+            }
+            else if(wallCount < Settings.WallCount)
+            {
+                retPath.Add(new InnerWallLine());
+            }
+            else
+            {
+                retPath.Add(new InfillLine());
+            }
+
             var cur = pointData.First();
             pointData.Remove(cur.Key);
 
             while(pointData.Count > 0)
             {
                 var candidates = LUTS.neighbours.Select(x => x + cur.Key).Where(pointData.ContainsKey);
-                KeyValuePair<Vector3Int, (int height, int thickness, int wallCount)> pick;
+                KeyValuePair<Vector3Int, (int height, int thickness)> pick;
                 if (candidates.Any())
                 {
                     var pickPos = candidates.First();
-                    pick = new KeyValuePair<Vector3Int, (int height, int thickness, int wallCount)>(pickPos, pointData[pickPos]);
+                    pick = new KeyValuePair<Vector3Int, (int height, int thickness)>(pickPos, pointData[pickPos]);
                 }
                 else
                 {

@@ -230,7 +230,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                     pick = pointData.MinBy(x => (x.Key - cur.Key).SQRMagnitude());
                 }
 
-                retPath.Add(new Line(new Vector3Int(cur.Key.X, cur.Key.Y, cur.Value.height) * Settings.Resolution+Settings.Offset, new Vector3Int(pick.Key.X, pick.Key.Y, pick.Value.height) * Settings.Resolution + Settings.Offset, (cur.Value.thickness+pick.Value.thickness)*0.5f,Math.Abs(pick.Key.X-cur.Key.X) > 1 || Math.Abs(pick.Key.Y - cur.Key.Y) > 1));
+                retPath.Add(new Line(new Vector3Int(cur.Key.X, cur.Key.Y, cur.Value.height+1) * Settings.Resolution+Settings.Offset, new Vector3Int(pick.Key.X, pick.Key.Y, pick.Value.height+1) * Settings.Resolution + Settings.Offset, (cur.Value.thickness+pick.Value.thickness)*0.5f,Math.Abs(pick.Key.X-cur.Key.X) > 1 || Math.Abs(pick.Key.Y - cur.Key.Y) > 1));
                 cur = pick;
                 pointData.Remove(cur.Key);
             }

@@ -1,4 +1,5 @@
 ﻿using Models;
+using Models.GcodeInfo;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,16 +12,23 @@ namespace CrystaliteSlicer.Postprocessing
     {
         public IEnumerable<Line> Process(IEnumerable<Line> path)
         {
-            var finalPath = new List<Line>();
-            var prev = path.First();
-            foreach (var item in path.Skip(1))
+            var finalPath = new List<Line>() { path.First()};
+            var prev = path.Skip(1).First();
+            foreach (var item in path.Skip(2))
             {
-                finalPath.Add(prev);
-                if ( (prev.End - item.Start).Length() > Settings.Resolution.Length()*0.75)
+                if (!(item is InfoLine))
                 {
-                    finalPath.Add(new Line(prev.End, item.Start, 0, true));
+                    finalPath.Add(prev);
+                    if ((prev.End - item.Start).Length() > Settings.Resolution.Length() * 0.75)
+                    {
+                        finalPath.Add(new Line(prev.End, item.Start, 0, true));
+                    }
+                    prev = item;
                 }
-                prev = item;
+                else
+                {
+                    finalPath.Add(item);
+                }
             }
             finalPath.Add(prev);
             return finalPath;

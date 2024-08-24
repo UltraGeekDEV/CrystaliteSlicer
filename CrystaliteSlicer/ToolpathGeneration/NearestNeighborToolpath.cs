@@ -170,7 +170,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
 
             var combinedPath = new List<Line>();
 
-            var layerPaths = tasks.SelectMany(x => x.OrderBy(y=>y.Key).Select(y=>y.Item1.Result)).Where(y => y.Count > 0).ToList();
+            var layerPaths = tasks.Select(x => x.OrderBy(y => y.Key).SelectMany(y=>y.Item1.Result).ToList()).Where(y => y.Count > 0).ToList();
 
             int count = 0;
 

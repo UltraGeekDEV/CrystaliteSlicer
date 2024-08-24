@@ -51,6 +51,8 @@ namespace Models
         public static int SmoothingCount { get => Instance.smoothingCount; set => Instance.smoothingCount = value; }
         public static int TopThickness { get => Instance.topThickness; set => Instance.topThickness = value; }
         public static float TravelSpeed { get => Instance.travelSpeed; set => Instance.travelSpeed = value; }
+        public static float RetractionDistance { get => Instance.retractionDistance; set => Instance.retractionDistance = value; }
+        public static float RetractionSpeed { get => Instance.retractionSpeed; set => Instance.retractionSpeed = value; }
 
         //model settings -to be removed-
         private Vector3 rotation;
@@ -76,6 +78,8 @@ namespace Models
         private float travelSpeed;
         private int wallCount;
         private int topThickness;
+        private float retractionDistance;
+        private float retractionSpeed;
 
         //toolpath settings
         private float pheromoneWeight;

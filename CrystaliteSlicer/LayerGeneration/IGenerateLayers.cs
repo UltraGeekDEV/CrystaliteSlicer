@@ -10,6 +10,6 @@ namespace CrystaliteSlicer.LayerGeneration
 {
     public interface IGenerateLayers
     {
-        public void GetLayers(IVoxelCollection voxels, IGenerateToolpath toolpathGenerator);
+        public void GetLayers(IVoxelCollection voxels);
     }
 }

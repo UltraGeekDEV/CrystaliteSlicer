@@ -172,19 +172,18 @@ namespace CrystaliteSlicer.LayerGeneration
                         {
                             var range = checkLayer[x, y];
                             range.max += maxLayerThickness + 2;
-                            var min = int.MaxValue;
+                            var layerSection = Enumerable.Range(range.min, range.max + 1).Where(z => voxels.Contains(new Vector3Int(x, y, z)) && voxels[x, y, z].layer == 0).ToList();
 
-                            for (int z = range.min; z < range.max; z++)
+                            if (layerSection.Count > 0)
                             {
-                                if (voxels.Contains(new Vector3Int(x, y, z)) && voxels[x, y, z].layer == 0)
+                                if (distFromEdge[x, y] == 0)
                                 {
-                                    min = z;
-                                    break;
+                                    checkHeight[x, y] = layerSection.Min();
                                 }
-                            }
-                            if (min != int.MaxValue)
-                            {
-                                checkHeight[x, y] = min;
+                                else
+                                {
+                                    checkHeight[x,y] = layerSection.Max();
+                                }
                             }
                             else
                             {
@@ -327,7 +326,7 @@ namespace CrystaliteSlicer.LayerGeneration
                 //Console.WriteLine($"\tFinnished layer {curLayer} with {activeEdge.Count} in active edge");
                 getNextLayer += (DateTime.Now - timerStart).TotalMilliseconds;
                 timerStart = DateTime.Now;
-
+                Console.WriteLine(activeEdge.Count);
                 //toolpathGeneartionInfo = new (int height, int thickness)[voxels.Size.X, voxels.Size.Y];
 
                 //tasks = Enumerable.Range(0, voxels.Size.Y).AsParallel().Select(y => Task.Run(() =>

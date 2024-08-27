@@ -11,6 +11,9 @@ namespace Models
         public VoxelData this[Vector3Int pos] { get => voxels[pos.X , pos.Y , pos.Z]; set => voxels[pos.X , pos.Y , pos.Z] = value; }
         public VoxelData this[int x, int y, int z] { get => voxels[x , y , z ]; set => voxels[x, y, z] = value; }
         public Vector3Int Size { get => size; set => size = value; }
+        public int LayerCount { get => layerCount; set => layerCount = value; }
+
+        private int layerCount;
 
         private VoxelData[,,] voxels;
         private Vector3Int size;

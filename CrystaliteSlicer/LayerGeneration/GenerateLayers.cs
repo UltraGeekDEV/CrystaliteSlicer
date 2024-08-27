@@ -24,7 +24,7 @@ namespace CrystaliteSlicer.LayerGeneration
         public void GetLayers(IVoxelCollection voxels, IGenerateToolpath toolpathGenerator)
         {
             this.voxels = voxels;
-            nozzleSize = new Vector3Int(new Vector3(Settings.NozzleDiameter, Settings.NozzleDiameter, 0) / Settings.Resolution);
+            nozzleSize = new Vector3Int((new Vector3(Settings.NozzleDiameter, Settings.NozzleDiameter, 0) / Settings.Resolution) * (1.0f-Settings.OverhangOverlap));
             maxLayerThickness = Math.Max((int)(Settings.MaxLayerHeight / Settings.Resolution.Z), 1);
 
             zVoxelsPerX = (MathF.Tan(Settings.MaxSlope * (MathF.PI / 180.0f)) * Settings.Resolution.X / Settings.Resolution.Z);
@@ -328,18 +328,18 @@ namespace CrystaliteSlicer.LayerGeneration
                 getNextLayer += (DateTime.Now - timerStart).TotalMilliseconds;
                 timerStart = DateTime.Now;
 
-                toolpathGeneartionInfo = new (int height, int thickness)[voxels.Size.X, voxels.Size.Y];
+                //toolpathGeneartionInfo = new (int height, int thickness)[voxels.Size.X, voxels.Size.Y];
 
-                tasks = Enumerable.Range(0, voxels.Size.Y).AsParallel().Select(y => Task.Run(() =>
-                {
-                    for (int x = 0; x < voxels.Size.X; x++)
-                    {
-                        toolpathGeneartionInfo[x, y] = (nextLayerVoxels[x, y].max, nextLayerVoxels[x, y].max - nextLayerVoxels[x, y].min + 1);
-                    }
-                }));
-                Task.WaitAll(tasks.ToArray());
+                //tasks = Enumerable.Range(0, voxels.Size.Y).AsParallel().Select(y => Task.Run(() =>
+                //{
+                //    for (int x = 0; x < voxels.Size.X; x++)
+                //    {
+                //        toolpathGeneartionInfo[x, y] = (nextLayerVoxels[x, y].max, nextLayerVoxels[x, y].max - nextLayerVoxels[x, y].min + 1);
+                //    }
+                //}));
+                //Task.WaitAll(tasks.ToArray());
 
-                toolpathGenerator.AddLayer(toolpathGeneartionInfo);
+                //toolpathGenerator.AddLayer(toolpathGeneartionInfo);
 
                 toolpathPrep += (DateTime.Now - timerStart).TotalMilliseconds;
                 timerStart = DateTime.Now;
@@ -347,6 +347,7 @@ namespace CrystaliteSlicer.LayerGeneration
 
             var totalMiliseconds = (DateTime.Now - start).TotalMilliseconds;
             var avgLayer = totalMiliseconds / curLayer;
+            voxels.LayerCount = curLayer;
             Console.WriteLine($"\n\tNonPlanar Layers Took:{totalMiliseconds}");
             Console.WriteLine($"\t\tOf which a layer on avarage took: {avgLayer}");
             Console.WriteLine($"\t\t\tMade up of:\n\t\t\t\tGet active shell:{(int)(getValidShell / avgLayer / curLayer * 100)}%\n\t\t\t\tGet max height:{(int)(getMaxHeight / curLayer / avgLayer * 100)}%\n\t\t\t\tGet next layer:{(int)(getNextLayer / curLayer / avgLayer * 100)}%\n\t\t\t\tPrepping toolpath:{(int)(toolpathPrep / curLayer / avgLayer * 100)}%");

@@ -41,18 +41,13 @@ namespace Models
         public static float InfillDensity { get =>  Instance.infillDensity; set =>   Instance.infillDensity = value; }
         public static int WallCount { get => Instance.wallCount; set => Instance.wallCount = value; }
         public static float PheromoneWeight { get => Instance.pheromoneWeight; set => Instance.pheromoneWeight = value; }
-        public static float DirectionChangeWeight { get => Instance.directionChangeWeight; set => Instance.directionChangeWeight = value; }
-        public static float DistanceWeight { get => Instance.distanceWeight; set => Instance.distanceWeight = value; }
-        public static float RandomWeight { get => Instance.randomWeight; set => Instance.randomWeight = value; }
-        public static int AntCount { get => Instance.antCount; set => Instance.antCount = value; }
-        public static int StepCount { get => Instance.stepCount; set => Instance.stepCount = value; }
-        public static float PheromoneDecayFactor { get => Instance.pheromoneDecayFactor; set => Instance.pheromoneDecayFactor = value; }
         public static float SmoothingAngle { get => Instance.smoothingAngle; set => Instance.smoothingAngle = value; }
         public static int SmoothingCount { get => Instance.smoothingCount; set => Instance.smoothingCount = value; }
         public static int TopThickness { get => Instance.topThickness; set => Instance.topThickness = value; }
         public static float TravelSpeed { get => Instance.travelSpeed; set => Instance.travelSpeed = value; }
         public static float RetractionDistance { get => Instance.retractionDistance; set => Instance.retractionDistance = value; }
         public static float RetractionSpeed { get => Instance.retractionSpeed; set => Instance.retractionSpeed = value; }
+        public static float OverhangOverlap { get => Instance.overhangOverlap; set => Instance.overhangOverlap = value; }
 
         //model settings -to be removed-
         private Vector3 rotation;
@@ -83,13 +78,8 @@ namespace Models
 
         //toolpath settings
         private float pheromoneWeight;
-        private float directionChangeWeight;
-        private float distanceWeight;
-        private float randomWeight;
-        private float pheromoneDecayFactor;
         private float smoothingAngle;
-        private int antCount;
-        private int stepCount;
         private int smoothingCount;
+        private float overhangOverlap;
     }
 }

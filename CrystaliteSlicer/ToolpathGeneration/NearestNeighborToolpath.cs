@@ -43,6 +43,51 @@ namespace CrystaliteSlicer.ToolpathGeneration
             zPerX = MathF.Tan(Settings.MaxSlope * (MathF.PI / 180.0f));
             this.voxels = voxels;
         }
+
+        public void SplitLayers(IVoxelCollection voxels)
+        {
+
+            (int height, int thickness)[,] curHeight = new (int height, int thickness)[voxels.Size.X, voxels.Size.Y];
+            (int height, int thickness)[,] layerData = new (int height, int thickness)[voxels.Size.X, voxels.Size.Y];
+
+            for (int layer = 1; layer < voxels.LayerCount; layer++)
+            {
+                for (int x = 0; x < voxels.Size.X; x++)
+                {
+                    for (int y = 0; y < voxels.Size.Y; y++)
+                    {
+                        curHeight[x, y].thickness = 0;
+                        while (curHeight[x, y].height+1 < voxels.Size.Z 
+                            && ((curHeight[x,y].thickness == 0 && voxels[x, y, curHeight[x, y].height + 1].layer <= layer) || (voxels[x, y, curHeight[x, y].height + 1].layer == layer)))
+                        {
+                            if (voxels[x,y,curHeight[x, y].height].layer == layer)
+                            {
+                                curHeight[x, y] = (curHeight[x, y].height + 1, curHeight[x, y].thickness + 1);
+                            }
+                            else
+                            {
+                                curHeight[x, y] = (curHeight[x, y].height + 1, curHeight[x, y].thickness);
+                            }
+                        }
+                    }
+                }
+                for (int x = 0; x < voxels.Size.X; x++)
+                {
+                    for (int y = 0; y < voxels.Size.Y; y++)
+                    {
+                        if (curHeight[x, y].thickness == 0)
+                        {
+                            layerData[x, y] = (0, 0);
+                        }
+                        else
+                        {
+                            layerData[x, y] = curHeight[x, y];
+                        }
+                    }
+                }
+                AddLayer(layerData);
+            }
+        }
         public void AddLayer((int height, int thickness)[,] layer)
         {
             int width = layer.GetLength(0);
@@ -151,7 +196,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                 }
             })).ToArray();
             Task.WaitAll(tasks);
-            var curLayer = points.AsParallel().SelectMany(x => x).ToDictionary(x => new Vector3Int(x.X, x.Y), x => (x.Z, layer[x.X, x.Y].thickness, Math.Min(df[x.X, x.Y] / nozzleVoxelSize,Settings.WallCount)));
+            var curLayer = points.AsParallel().SelectMany(x => x).ToDictionary(x => new Vector3Int(x.X, x.Y), x => (x.Z, layer[x.X, x.Y].thickness+1, Math.Min(df[x.X, x.Y] / nozzleVoxelSize,Settings.WallCount)));
             layers.Add(curLayer);
         }
         private bool IsLine(int value, int x, int y, int z)
@@ -230,7 +275,8 @@ namespace CrystaliteSlicer.ToolpathGeneration
                     pick = pointData.MinBy(x => (x.Key - cur.Key).SQRMagnitude());
                 }
 
-                retPath.Add(new Line(new Vector3Int(cur.Key.X, cur.Key.Y, cur.Value.height+1) * Settings.Resolution+Settings.Offset, new Vector3Int(pick.Key.X, pick.Key.Y, pick.Value.height+1) * Settings.Resolution + Settings.Offset, (cur.Value.thickness+pick.Value.thickness)*0.5f,Math.Abs(pick.Key.X-cur.Key.X) > 1 || Math.Abs(pick.Key.Y - cur.Key.Y) > 1));
+                retPath.Add(new Line(new Vector3Int(cur.Key.X, cur.Key.Y, cur.Value.height) * Settings.Resolution+Settings.Offset, new Vector3Int(pick.Key.X, pick.Key.Y, pick.Value.height) * Settings.Resolution + Settings.Offset
+                    , Math.Max(cur.Value.thickness,pick.Value.thickness),Math.Abs(pick.Key.X-cur.Key.X) > 1 || Math.Abs(pick.Key.Y - cur.Key.Y) > 1));
                 cur = pick;
                 pointData.Remove(cur.Key);
             }

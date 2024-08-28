@@ -77,7 +77,14 @@ namespace CrystaliteSlicer.LayerGeneration
                 var checkHeight = new int[voxels.Size.X, voxels.Size.Y];
                 activeEdge.AsParallel().SelectMany(CheckAttached).Distinct().GroupBy(x => new Vector3Int(x.X, x.Y)).ForAll(x =>
                 {
-                    checkHeight[x.Key.X, x.Key.Y] = Math.Max(x.Min(x => x.Z), height[x.Key.X, x.Key.Y].maxZ);
+                    if (height[x.Key.X,x.Key.Y].maxZ == 0)
+                    {
+                        checkHeight[x.Key.X, x.Key.Y] = x.Max(x => x.Z);
+                    }
+                    else
+                    {
+                        checkHeight[x.Key.X, x.Key.Y] = height[x.Key.X, x.Key.Y].maxZ;
+                    }
                 });
                 //Get max height
                 //loop y +-
@@ -149,6 +156,7 @@ namespace CrystaliteSlicer.LayerGeneration
 
             Console.WriteLine($"\tNonPlanar Layers Took:{(DateTime.Now - start).TotalMilliseconds}");
             start = DateTime.Now;
+            voxels.LayerCount = curLayer;
         }
 
         private bool HasOpenFace(Vector3Int x)

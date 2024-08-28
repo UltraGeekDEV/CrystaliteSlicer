@@ -57,8 +57,8 @@ namespace CrystaliteSlicer.ToolpathGeneration
                     for (int y = 0; y < voxels.Size.Y; y++)
                     {
                         curHeight[x, y].thickness = 0;
-                        while (curHeight[x, y].height+1 < voxels.Size.Z 
-                            && ((curHeight[x,y].thickness == 0 && voxels[x, y, curHeight[x, y].height + 1].layer <= layer) || (voxels[x, y, curHeight[x, y].height + 1].layer == layer)))
+                        while (curHeight[x, y].height < voxels.Size.Z 
+                            && ((curHeight[x,y].thickness == 0 && voxels[x, y, curHeight[x, y].height].layer < layer) || (voxels[x, y, curHeight[x, y].height].layer == layer)))
                         {
                             if (voxels[x,y,curHeight[x, y].height].layer == layer)
                             {
@@ -69,6 +69,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                                 curHeight[x, y] = (curHeight[x, y].height + 1, curHeight[x, y].thickness);
                             }
                         }
+                        curHeight[x, y] = (curHeight[x, y].height - 1, curHeight[x, y].thickness);
                     }
                 }
                 for (int x = 0; x < voxels.Size.X; x++)
@@ -215,7 +216,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
 
             var combinedPath = new List<Line>();
 
-            var layerPaths = tasks.Select(x => x.OrderBy(y => y.Key).SelectMany(y=>y.Item1.Result).ToList()).Where(y => y.Count > 0).ToList();
+            var layerPaths = tasks.Select(x => x.OrderByDescending(y => y.Key).SelectMany(y=>y.Item1.Result).ToList()).Where(y => y.Count > 0).ToList();
 
             int count = 0;
 

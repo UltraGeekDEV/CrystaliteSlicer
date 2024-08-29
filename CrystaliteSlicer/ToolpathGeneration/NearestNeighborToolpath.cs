@@ -25,6 +25,14 @@ namespace CrystaliteSlicer.ToolpathGeneration
                 new Vector3Int(0,-1),
                 new Vector3Int(1,-1)
             };
+
+            public static List<Vector3Int> neighboursFlipped = new List<Vector3Int>();
+
+            static LUTS()
+            {
+                neighboursFlipped = neighboursFlipped.ToList();
+                neighboursFlipped.Reverse();
+            }
         }
 
         int nozzleVoxelSize;
@@ -197,7 +205,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                 }
             })).ToArray();
             Task.WaitAll(tasks);
-            var curLayer = points.AsParallel().SelectMany(x => x).ToDictionary(x => new Vector3Int(x.X, x.Y), x => (x.Z, layer[x.X, x.Y].thickness+1, Math.Min(df[x.X, x.Y] / nozzleVoxelSize,Settings.WallCount)));
+            var curLayer = points.AsParallel().SelectMany(x => x).ToDictionary(x => new Vector3Int(x.X, x.Y), x => (x.Z, layer[x.X, x.Y].thickness, Math.Min(df[x.X, x.Y] / nozzleVoxelSize,Settings.WallCount)));
             layers.Add(curLayer);
         }
         private bool IsLine(int value, int x, int y, int z)
@@ -211,12 +219,12 @@ namespace CrystaliteSlicer.ToolpathGeneration
         public IEnumerable<Line> GetPath()
         {
             //var tasks = layers.Select(y => Task<List<Line>>.Run(() => GetLayerPath(y))).ToArray();
-            var tasks = layers.Select(x=>x.GroupBy(y=>y.Value.wallCount)).Select(x=>x.Select(y => (Task<List<Line>>.Run(() => GetLayerPath(y.ToDictionary(z=>z.Key,z=>(z.Value.height,z.Value.thickness)),y.Key)),y.Key)));
+            var tasks = layers.Select(x=>x.GroupBy(y=>y.Value.wallCount)).Select(x=>x.Select((y,id) => (Task<List<Line>>.Run(() => GetLayerPath(y.ToDictionary(z=>z.Key,z=>(z.Value.height,z.Value.thickness)),y.Key, id)),y.Key)));
             Task.WaitAll(tasks.SelectMany(x=>x.Select(y=>y.Item1)).ToArray());
 
             var combinedPath = new List<Line>();
 
-            var layerPaths = tasks.Select(x => x.OrderByDescending(y => y.Key).SelectMany(y=>y.Item1.Result).ToList()).Where(y => y.Count > 0).ToList();
+            var layerPaths = tasks.Select(x => x.OrderBy(y => y.Key).SelectMany(y=>y.Item1.Result).ToList()).Where(y => y.Count > 0).ToList();
 
             int count = 0;
 
@@ -237,8 +245,10 @@ namespace CrystaliteSlicer.ToolpathGeneration
             return combinedPath;
         }
 
-        private List<Line> GetLayerPath(Dictionary<Vector3Int, (int height, int thickness)> pointData, int wallCount)
+        private List<Line> GetLayerPath(Dictionary<Vector3Int, (int height, int thickness)> pointData, int wallCount,int id)
         {
+            var direction = new Random().Next(0, 2);
+
             if (pointData.Count < 2)
             {
                 return new List<Line>();
@@ -264,7 +274,17 @@ namespace CrystaliteSlicer.ToolpathGeneration
 
             while(pointData.Count > 0)
             {
-                var candidates = LUTS.neighbours.Select(x => x + cur.Key).Where(pointData.ContainsKey);
+                List<Vector3Int> candidates;
+
+                if (direction == 0)
+                {
+                    candidates = LUTS.neighbours.Select(x => x + cur.Key).Where(pointData.ContainsKey).ToList();
+                }
+                else
+                {
+                    candidates = LUTS.neighboursFlipped.Select(x => x + cur.Key).Where(pointData.ContainsKey).ToList();
+                }
+
                 KeyValuePair<Vector3Int, (int height, int thickness)> pick;
                 if (candidates.Any())
                 {
@@ -276,8 +296,8 @@ namespace CrystaliteSlicer.ToolpathGeneration
                     pick = pointData.MinBy(x => (x.Key - cur.Key).SQRMagnitude());
                 }
 
-                retPath.Add(new Line(new Vector3Int(cur.Key.X, cur.Key.Y, cur.Value.height) * Settings.Resolution+Settings.Offset, new Vector3Int(pick.Key.X, pick.Key.Y, pick.Value.height) * Settings.Resolution + Settings.Offset
-                    , Math.Max(cur.Value.thickness,pick.Value.thickness),Math.Abs(pick.Key.X-cur.Key.X) > 1 || Math.Abs(pick.Key.Y - cur.Key.Y) > 1));
+                retPath.Add(new Line(new Vector3(cur.Key.X, cur.Key.Y, cur.Value.height+1f) * Settings.Resolution+Settings.Offset, new Vector3(pick.Key.X, pick.Key.Y, pick.Value.height + 1f) * Settings.Resolution + Settings.Offset
+                    , (cur.Value.thickness+pick.Value.thickness)*0.5f,Math.Abs(pick.Key.X-cur.Key.X) > 1 || Math.Abs(pick.Key.Y - cur.Key.Y) > 1));
                 cur = pick;
                 pointData.Remove(cur.Key);
             }

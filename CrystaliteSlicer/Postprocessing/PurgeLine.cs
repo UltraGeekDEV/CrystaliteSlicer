@@ -15,8 +15,8 @@ namespace CrystaliteSlicer.Postprocessing
         {
             float lineMaterial = Settings.MaxLayerHeight / Settings.Resolution.Z * 2;
 
-            Vector3 a = new Vector3(5, 10, Settings.MaxLayerHeight);
-            Vector3 b = new Vector3(5, Settings.PrintVolume.Y-10, Settings.MaxLayerHeight);
+            Vector3 a = new Vector3(5, 10, Settings.MaxLayerHeight*0.25f);
+            Vector3 b = new Vector3(5, Settings.PrintVolume.Y-10, Settings.MaxLayerHeight * 0.25f);
 
             return new List<Line>() { 
                 new Line(a+new Vector3(0,0, Settings.MaxLayerHeight),b,lineMaterial,false),

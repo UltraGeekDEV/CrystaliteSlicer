@@ -180,8 +180,9 @@ namespace CrystaliteSlicer.LayerGeneration
             {
                 for (int y = -nozzleSize.Y; y <= nozzleSize.Y; y++)
                 {
-                    var check = new Vector3Int(x, y, 0) + pos;
-                    if (voxels.WithinBounds(check))
+                    var offset = new Vector3Int(x, y, 0);
+                    var check = offset + pos;
+                    if (offset.Magnitude() <= nozzleSize.X && voxels.WithinBounds(check))
                     {
                         var toZ = maxHeight[check.X, check.Y];
                         int fromZ = pos.Z;
@@ -216,8 +217,9 @@ namespace CrystaliteSlicer.LayerGeneration
             {
                 for (int y = -nozzleSize.Y; y <= nozzleSize.Y; y++)
                 {
-                    var check = new Vector3Int(x, y, 0) + pos;
-                    if (voxels.WithinBounds(check))
+                    var offset = new Vector3Int(x, y, 0);
+                    var check = offset + pos;
+                    if (offset.Magnitude() <= nozzleSize.X && voxels.WithinBounds(check))
                     {
                         int toZ;
                         int fromZ;

@@ -26,7 +26,7 @@ namespace CrystaliteSlicer.Postprocessing
             {
                 if (!IsSpecialLine(item))
                 {
-                    if ((line.End - item.Start).Length() < Settings.Resolution.Length() && mergedCount < Settings.SmoothingCount && !item.Travel && !line.Travel && Vector3.Dot(initialDir, Vector3.Normalize(item.End - item.Start)) >= Settings.SmoothingAngle)
+                    if (((line.End - item.Start)*new Vector3(1,1,0)).Length() < Settings.Resolution.Length() && mergedCount < Settings.SmoothingCount && !item.Travel && !line.Travel && Vector3.Dot(initialDir, Vector3.Normalize(item.End - item.Start)) >= Settings.SmoothingAngle)
                     {
                         line.End = item.End;
                         line.Flow = (line.Flow * (mergedCount + 1) + item.Flow) / (mergedCount + 2);

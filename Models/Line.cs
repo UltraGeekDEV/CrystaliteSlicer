@@ -32,7 +32,7 @@ namespace Models
 
         public double Length()
         {
-            return (end-start).Length();
+            return (new Vector3(end.X, end.Y,0) - new Vector3(start.X, start.Y,0)).Length();
         }
 
         public double Distance(Line other)

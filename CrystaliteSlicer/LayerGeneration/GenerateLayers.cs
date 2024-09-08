@@ -24,6 +24,9 @@ namespace CrystaliteSlicer.LayerGeneration
 
         float zVoxelsPerX;
         int curLayer;
+
+        object[] rowLocks;
+
         public void GetLayers(IVoxelCollection voxels)
         {
             this.voxels = voxels;
@@ -38,9 +41,8 @@ namespace CrystaliteSlicer.LayerGeneration
             List<Vector3Int> activeEdge = new List<Vector3Int>();
             object activeEdgeLock = new object();
 
-            var start = DateTime.Now;
             var firstLayer = Math.Min(maxLayerThickness, voxels.Size.Z);
-            var tasks = Enumerable.Range(0, voxels.Size.X).AsParallel().Select(x => Task.Run(() =>
+            var tasks = Enumerable.Range(0, voxels.Size.X).Select(x => Task.Run(() =>
             {
                 for (int y = 0; y < voxels.Size.Y; y++)
                 {
@@ -62,9 +64,6 @@ namespace CrystaliteSlicer.LayerGeneration
             }));
             Task.WaitAll(tasks.ToArray());
 
-            Console.WriteLine($"\tFirst Layer Took:{(DateTime.Now - start).TotalMilliseconds}");
-            start = DateTime.Now;
-
             maxZ = firstLayer;
             minZ = 0;
 
@@ -75,17 +74,95 @@ namespace CrystaliteSlicer.LayerGeneration
                 maxHeight = new float[voxels.Size.X, voxels.Size.Y];
                 nextHeight = new (int minZ, int maxZ)[voxels.Size.X, voxels.Size.Y];
                 var checkHeight = new int[voxels.Size.X, voxels.Size.Y];
-                activeEdge.AsParallel().SelectMany(CheckAttached).Distinct().GroupBy(x => new Vector3Int(x.X, x.Y)).ForAll(x =>
+                var neighbours = new List<(int x, int y)>() {
+                (-1,0),
+                (0,1),
+                (1,0),
+                (0,-1),
+                };
+
+                var sqrNozzleSize = nozzleSize.X * nozzleSize.X;
+
+                var CheckAttachedAction = (int x) =>
                 {
-                    if (height[x.Key.X,x.Key.Y].maxZ == 0)
+                    for (int y = 0; y < voxels.Size.Y; y++)
                     {
-                        checkHeight[x.Key.X, x.Key.Y] = x.Max(x => x.Z);
+                        if (height[x, y].maxZ != 0 && neighbours.Any(coord =>
+                        {
+                            var pos = new Vector3Int(coord.x + x, coord.y + y);
+                            return voxels.WithinBounds(pos) && height[pos.X, pos.Y].maxZ == 0;
+                        }))
+                        {
+                            for (int i = -nozzleSize.X; i <= nozzleSize.X; i++)
+                            {
+                                for (int j = -nozzleSize.Y; j <= nozzleSize.Y; j++)
+                                {
+                                    var check = new Vector3Int(x+i, y+j, 0);
+                                    if (voxels.WithinBounds(check) && height[check.X,check.Y].maxZ == 0 && (i*i+j*j) <= sqrNozzleSize)
+                                    {
+                                        var fromZ = height[x,y].minZ;
+                                        var toZ = fromZ + maxLayerThickness;
+
+                                        for (int z = fromZ; z <= toZ; z++)
+                                        {
+                                            check.Z = z;
+                                            if (voxels.Contains(check) && voxels[check].layer == 0)
+                                            {
+                                                if (checkHeight[check.X, check.Y] == 0)
+                                                {
+                                                    checkHeight[check.X, check.Y] = z;
+                                                }
+                                                else
+                                                {
+                                                    checkHeight[check.X, check.Y] = Math.Max(checkHeight[check.Y, check.Y], z);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
-                    else
+                };
+
+                //for (int x = 0; x < voxels.Size.X; x++)
+                //{
+                //    CheckAttachedAction(x);
+                //}
+
+                var chunkSize = nozzleSize.X * 2 + 2;
+                int threadCount = voxels.Size.X / chunkSize;
+
+                for (int i = 0; i < chunkSize; i++)
+                {
+                    tasks = Enumerable.Range(0, threadCount).Where(x => x * chunkSize + i < voxels.Size.X).Select(x => Task.Run(() => CheckAttachedAction(x * chunkSize + i)));
+                    Task.WaitAll(tasks.ToArray());
+                }
+
+                tasks = Enumerable.Range(0, voxels.Size.X).Select(x => Task.Run(() =>
+                {
+                    for (int y = 0; y < voxels.Size.Y; y++)
                     {
-                        checkHeight[x.Key.X, x.Key.Y] = height[x.Key.X, x.Key.Y].maxZ;
+                        if (height[x,y].maxZ != 0)
+                        {
+                            checkHeight[x,y] = height[x,y].maxZ;
+                        }
                     }
-                });
+                }));
+                Task.WaitAll(tasks.ToArray());
+
+                //activeEdge.AsParallel().SelectMany(CheckAttached).Distinct().GroupBy(x => new Vector3Int(x.X, x.Y)).ForAll(x =>
+                //{
+                //    if (height[x.Key.X,x.Key.Y].maxZ == 0)
+                //    {
+                //        checkHeight[x.Key.X, x.Key.Y] = x.Max(x => x.Z);
+                //    }
+                //    else
+                //    {
+                //        checkHeight[x.Key.X, x.Key.Y] = height[x.Key.X, x.Key.Y].maxZ;
+                //    }
+                //});
+
                 //Get max height
                 //loop y +-
                 tasks = Enumerable.Range(0, voxels.Size.X).AsParallel().Select(x => Task.Run(() =>
@@ -151,11 +228,7 @@ namespace CrystaliteSlicer.LayerGeneration
                 });
                 activeEdge = groupedEdge.Select(x => new Vector3Int(x.Key.X, x.Key.Y, nextHeight[x.Key.X, x.Key.Y].minZ)).ToList();
                 height = nextHeight;
-                Console.WriteLine($"\tFinnished layer {curLayer} with {activeEdge.Count} voxels in active edge");
             }
-
-            Console.WriteLine($"\tNonPlanar Layers Took:{(DateTime.Now - start).TotalMilliseconds}");
-            start = DateTime.Now;
             voxels.LayerCount = curLayer;
         }
 
@@ -186,15 +259,6 @@ namespace CrystaliteSlicer.LayerGeneration
                     {
                         var toZ = maxHeight[check.X, check.Y];
                         int fromZ = pos.Z;
-                        //if (height[check.X, check.Y].maxZ == 0)
-                        //{
-                        //    fromZ = pos.Z;
-                        //}
-                        //else
-                        //{
-                        //    fromZ = height[check.X, check.Y].maxZ;
-                        //}
-
 
                         for (int z = fromZ; z <= toZ; z++)
                         {

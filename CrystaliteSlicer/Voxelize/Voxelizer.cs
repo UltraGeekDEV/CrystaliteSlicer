@@ -59,7 +59,7 @@ namespace CrystaliteSlicer.Voxelize
             Console.WriteLine($"\tShell took:{(DateTime.Now - startTime).TotalMilliseconds}  ms");
             startTime = DateTime.Now;
 
-            int seedSpacing = voxels.Size.X / Environment.ProcessorCount / 2;
+            int seedSpacing = Math.Max(1, voxels.Size.X / Environment.ProcessorCount / 2);
             var seedPoints = Enumerable.Range(0, voxels.Size.X / seedSpacing).AsParallel().SelectMany(x =>
             {
                 var ret = new List<Vector3Int>();

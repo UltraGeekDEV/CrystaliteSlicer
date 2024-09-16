@@ -218,13 +218,12 @@ namespace CrystaliteSlicer.ToolpathGeneration
         }
         public IEnumerable<Line> GetPath()
         {
-            //var tasks = layers.Select(y => Task<List<Line>>.Run(() => GetLayerPath(y))).ToArray();
             var tasks = layers.Select(x=>x.GroupBy(y=>y.Value.wallCount)).Select(x=>x.Select((y,id) => (Task<List<Line>>.Run(() => GetLayerPath(y.ToDictionary(z=>z.Key,z=>(z.Value.height,z.Value.thickness)),y.Key, id)),y.Key)));
             Task.WaitAll(tasks.SelectMany(x=>x.Select(y=>y.Item1)).ToArray());
 
             var combinedPath = new List<Line>();
 
-            var layerPaths = tasks.Select(x => x.OrderByDescending(y => y.Key).SelectMany(y=>y.Item1.Result).ToList()).Where(y => y.Count > 0).ToList();
+            var layerPaths = tasks.Select(x => x.OrderBy(y => y.Key).SelectMany(y => y.Item1.Result).ToList()).Where(y => y.Count > 0).ToList();
 
             int count = 0;
 

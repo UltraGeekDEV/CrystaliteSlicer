@@ -128,7 +128,7 @@ namespace CrystaliteSlicer.LayerGeneration
                 };
 
                 var chunkSize = nozzleSize.X * 2 + 2;
-                int threadCount = voxels.Size.X / chunkSize;
+                int threadCount = Math.Max(voxels.Size.X / chunkSize,1);
 
                 for (int i = 0; i < chunkSize; i++)
                 {
@@ -273,9 +273,9 @@ namespace CrystaliteSlicer.LayerGeneration
                 Task.WaitAll(tasks.ToArray());
 
                 var nextLayerVoxels = results.AsParallel().SelectMany(x=>x).ToList();
-
-                var stillOpen = activeEdge.AsParallel().Where(HasOpenFace);
-
+                Console.WriteLine($"Next Layer Count: {nextLayerVoxels.Count}");
+                var stillOpen = activeEdge.AsParallel().Where(HasOpenFace).ToList();
+                Console.WriteLine($"Still Open Count: {stillOpen.Count}");
                 var allActiveVoxels = stillOpen.AsParallel().Union(nextLayerVoxels.AsParallel().Where(HasOpenFace));
                 var groupedEdge = allActiveVoxels.GroupBy(x => new Vector3Int(x.X, x.Y)).ToList();
                 groupedEdge.AsParallel().ForAll(x =>
@@ -284,6 +284,11 @@ namespace CrystaliteSlicer.LayerGeneration
                 });
                 activeEdge = groupedEdge.Select(x => new Vector3Int(x.Key.X, x.Key.Y, nextHeight[x.Key.X, x.Key.Y].minZ)).ToList();
                 height = nextHeight;
+
+                if (nextLayerVoxels.Count == 0)
+                {
+                    break;
+                }
             }
             voxels.LayerCount = curLayer;
         }
@@ -299,73 +304,6 @@ namespace CrystaliteSlicer.LayerGeneration
                 }
             }
             return false;
-        }
-
-        private IEnumerable<Vector3Int> GetAttached(Vector3Int pos)
-        {
-            var ret = new List<Vector3Int>();
-
-            for (int x = -nozzleSize.X; x <= nozzleSize.X; x++)
-            {
-                for (int y = -nozzleSize.Y; y <= nozzleSize.Y; y++)
-                {
-                    var offset = new Vector3Int(x, y, 0);
-                    var check = offset + pos;
-                    if (offset.Magnitude() <= nozzleSize.X && voxels.WithinBounds(check))
-                    {
-                        var toZ = maxHeight[check.X, check.Y];
-                        int fromZ = pos.Z;
-
-                        for (int z = fromZ; z <= toZ; z++)
-                        {
-                            check.Z = z;
-                            if (voxels.Contains(check) && voxels[check].Layer == 0)
-                            {
-                                ret.Add(check);
-                            }
-                        }
-                    }
-                }
-            }
-            return ret;
-        }
-        private IEnumerable<Vector3Int> CheckAttached(Vector3Int pos)
-        {
-            var ret = new List<Vector3Int>();
-
-            for (int x = -nozzleSize.X; x <= nozzleSize.X; x++)
-            {
-                for (int y = -nozzleSize.Y; y <= nozzleSize.Y; y++)
-                {
-                    var offset = new Vector3Int(x, y, 0);
-                    var check = offset + pos;
-                    if (offset.Magnitude() <= nozzleSize.X && voxels.WithinBounds(check))
-                    {
-                        int toZ;
-                        int fromZ;
-                        if (height[check.X, check.Y].maxZ == 0)
-                        {
-                            fromZ = pos.Z;
-                        }
-                        else
-                        {
-                            fromZ = height[check.X, check.Y].maxZ;
-                        }
-
-                        toZ = pos.Z + maxLayerThickness;
-
-                        for (int z = fromZ; z <= toZ; z++)
-                        {
-                            check.Z = z;
-                            if (voxels.Contains(check) && voxels[check].Layer == 0)
-                            {
-                                ret.Add(check);
-                            }
-                        }
-                    }
-                }
-            }
-            return ret;
         }
     }
 }

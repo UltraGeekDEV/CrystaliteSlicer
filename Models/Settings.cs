@@ -43,43 +43,43 @@ namespace Models
         public static float PheromoneWeight { get => Instance.pheromoneWeight; set => Instance.pheromoneWeight = value; }
         public static float SmoothingAngle { get => Instance.smoothingAngle; set => Instance.smoothingAngle = value; }
         public static int SmoothingCount { get => Instance.smoothingCount; set => Instance.smoothingCount = value; }
-        public static int TopThickness { get => Instance.topThickness; set => Instance.topThickness = value; }
+        public static float TopThickness { get => Instance.topThickness; set => Instance.topThickness = value; }
         public static float TravelSpeed { get => Instance.travelSpeed; set => Instance.travelSpeed = value; }
         public static float RetractionDistance { get => Instance.retractionDistance; set => Instance.retractionDistance = value; }
         public static float RetractionSpeed { get => Instance.retractionSpeed; set => Instance.retractionSpeed = value; }
         public static float OverhangOverlap { get => Instance.overhangOverlap; set => Instance.overhangOverlap = value; }
 
         //model settings -to be removed-
-        private Vector3 rotation;
-        private Vector3 scale;
-        private Vector3 offset;
+        public Vector3 rotation;
+        public Vector3 scale;
+        public Vector3 offset;
 
         //printer settings
-        private Vector3 printVolume;
-        private float nozzleDiameter;
-        private float maxSlope;
-        private float maxLayerHeight;
+        public Vector3 printVolume;
+        public float nozzleDiameter;
+        public float maxSlope;
+        public float maxLayerHeight;
 
         //print settings
-        private Vector3 resolution;
-        private float hotendTemp;
-        private float bedTemp;
-        private float fanSpeed;
-        private float extrusionMult;
-        private float outerWallSpeed;
-        private float innerWallSpeed;
-        private float infillSpeed;
-        private float infillDensity;
-        private float travelSpeed;
-        private int wallCount;
-        private int topThickness;
-        private float retractionDistance;
-        private float retractionSpeed;
+        public Vector3 resolution;
+        public float hotendTemp;
+        public float bedTemp;
+        public float fanSpeed;
+        public float extrusionMult;
+        public float outerWallSpeed;
+        public float innerWallSpeed;
+        public float infillSpeed;
+        public float infillDensity;
+        public float travelSpeed;
+        public int wallCount;
+        public float topThickness;
+        public float retractionDistance;
+        public float retractionSpeed;
 
         //toolpath settings
-        private float pheromoneWeight;
-        private float smoothingAngle;
-        private int smoothingCount;
-        private float overhangOverlap;
+        public float pheromoneWeight;
+        public float smoothingAngle;
+        public int smoothingCount;
+        public float overhangOverlap;
     }
 }

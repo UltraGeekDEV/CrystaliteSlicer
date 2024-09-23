@@ -8,7 +8,10 @@ namespace Models
 {
     public struct VoxelData
     {
-        public int depth;
-        public int layer;
+        private short depth;
+        private short layer;
+
+        public int Depth { get => depth; set => depth = (short)Math.Min(value,ushort.MaxValue); }
+        public int Layer { get => layer; set => layer = (short)Math.Min(value,ushort.MaxValue); }
     }
 }

@@ -1,0 +1,47 @@
+{
+  "rotation": {
+    "X": 0.0,
+    "Y": 0.0,
+    "Z": 0.0
+  },
+  "scale": {
+    "X": 1.0,
+    "Y": 1.0,
+    "Z": 1.0
+  },
+  "offset": {
+    "X": 30.0,
+    "Y": 30.0,
+    "Z": 0.0
+  },
+  "printVolume": {
+    "X": 235.0,
+    "Y": 235.0,
+    "Z": 245.0
+  },
+  "nozzleDiameter": 0.4,
+  "maxSlope": 10.0,
+  "maxLayerHeight": 0.32,
+  "resolution": {
+    "X": 0.1,
+    "Y": 0.1,
+    "Z": 0.05
+  },
+  "hotendTemp": 200.0,
+  "bedTemp": 50.0,
+  "fanSpeed": 1.0,
+  "extrusionMult": 0.0,
+  "outerWallSpeed": 35.0,
+  "innerWallSpeed": 35.0,
+  "infillSpeed": 50.0,
+  "infillDensity": 0.2,
+  "travelSpeed": 150.0,
+  "wallCount": 3,
+  "topThickness": 2.0,
+  "retractionDistance": 4.0,
+  "retractionSpeed": 45.0,
+  "pheromoneWeight": 0.0,
+  "smoothingAngle": 0.75,
+  "smoothingCount": 6,
+  "overhangOverlap": 0.0
+}

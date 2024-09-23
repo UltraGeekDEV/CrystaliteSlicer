@@ -1,6 +1,7 @@
 ﻿using CrystaliteSlicer.InfillGeneration;
 using Models;
 using Models.GcodeInfo;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -41,6 +42,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
         IInfill infillPattern;
         List<Dictionary<Vector3Int, (int height, int thickness, int wallCount)>> layers;
         float zPerX;
+        int topThickness = (int)(Settings.TopThickness / Settings.Resolution.Z);
         public NearestNeighborToolpath(IVoxelCollection voxels, IInfill infillPattern)
         {
             this.infillPattern = infillPattern;
@@ -66,9 +68,9 @@ namespace CrystaliteSlicer.ToolpathGeneration
                     {
                         curHeight[x, y].thickness = 0;
                         while (curHeight[x, y].height < voxels.Size.Z 
-                            && ((curHeight[x,y].thickness == 0 && voxels[x, y, curHeight[x, y].height].layer < layer) || (voxels[x, y, curHeight[x, y].height].layer == layer)))
+                            && ((curHeight[x,y].thickness == 0 && voxels[x, y, curHeight[x, y].height].Layer < layer) || (voxels[x, y, curHeight[x, y].height].Layer == layer)))
                         {
-                            if (voxels[x,y,curHeight[x, y].height].layer == layer)
+                            if (voxels[x,y,curHeight[x, y].height].Layer == layer)
                             {
                                 curHeight[x, y] = (curHeight[x, y].height + 1, curHeight[x, y].thickness + 1);
                             }
@@ -197,7 +199,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
 
                     bool isLine = IsLine(curDist, x, y, layer[x, y].height);
                     bool isShell = IsShell(curDist, x, y, layer[x, y].height);
-                    bool isFill = infillPattern.IsFill(curDist, voxels[x, y, layer[x, y].height].depth, x, y, layer[x, y].height);
+                    bool isFill = infillPattern.IsFill(curDist, voxels[x, y, layer[x, y].height].Depth, x, y, layer[x, y].height);
                     if (isLine || (!isShell && isFill))
                     {
                         points[y].Add(new Vector3Int(x, y, layer[x, y].height));
@@ -214,7 +216,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
         }
         private bool IsShell(int value, int x, int y, int z)
         {
-            return value / nozzleVoxelSize < Settings.WallCount || voxels[x, y, z].depth < Settings.TopThickness;
+            return value / nozzleVoxelSize < Settings.WallCount || voxels[x, y, z].Depth < topThickness;
         }
         public IEnumerable<Line> GetPath()
         {

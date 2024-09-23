@@ -26,8 +26,6 @@ namespace CrystaliteSlicer.LayerGeneration
         int curLayer;
         const float diagonalConstant = 0.3f;
 
-        object[] rowLocks;
-
         public void GetLayers(IVoxelCollection voxels)
         {
             this.voxels = voxels;
@@ -49,10 +47,10 @@ namespace CrystaliteSlicer.LayerGeneration
                 {
                     for (int z = 0; z < firstLayer; z++)
                     {
-                        if (voxels[x, y, z].depth != -1)
+                        if (voxels[x, y, z].Depth != -1)
                         {
                             var voxel = voxels[x, y, z];
-                            voxel.layer = 1;
+                            voxel.Layer = 1;
                             voxels[x, y, z] = voxel;
                             height[x, y] = (Math.Min(height[x, y].maxZ, z + 1), Math.Max(height[x, y].minZ, z + 1));
                             lock (activeEdgeLock)
@@ -108,7 +106,7 @@ namespace CrystaliteSlicer.LayerGeneration
                                         for (int z = fromZ; z <= toZ; z++)
                                         {
                                             check.Z = z;
-                                            if (voxels.Contains(check) && voxels[check].layer == 0)
+                                            if (voxels.Contains(check) && voxels[check].Layer == 0)
                                             {
                                                 if (checkHeight[check.X, check.Y] == 0)
                                                 {
@@ -260,11 +258,11 @@ namespace CrystaliteSlicer.LayerGeneration
                             {
                                 var check = new Vector3Int(x, y, z);
                                 var voxelData = voxels[check];
-                                if (voxelData.layer == 0 && voxelData.depth != -1)
+                                if (voxelData.Layer == 0 && voxelData.Depth != -1)
                                 {
                                     ret.Add(check);
                                     var voxel = voxels[x,y,z];
-                                    voxel.layer = curLayer;
+                                    voxel.Layer = curLayer;
                                     voxels[x,y,z] = voxel;
                                 }
                             }
@@ -295,7 +293,7 @@ namespace CrystaliteSlicer.LayerGeneration
             for (int i = 0; i < LUTS.faceOffsets.Count; i++)
             {
                 var check = x + LUTS.faceOffsets[i];
-                if (voxels.Contains(check) && voxels[check].layer == 0)
+                if (voxels.Contains(check) && voxels[check].Layer == 0)
                 {
                     return true;
                 }
@@ -321,7 +319,7 @@ namespace CrystaliteSlicer.LayerGeneration
                         for (int z = fromZ; z <= toZ; z++)
                         {
                             check.Z = z;
-                            if (voxels.Contains(check) && voxels[check].layer == 0)
+                            if (voxels.Contains(check) && voxels[check].Layer == 0)
                             {
                                 ret.Add(check);
                             }
@@ -359,7 +357,7 @@ namespace CrystaliteSlicer.LayerGeneration
                         for (int z = fromZ; z <= toZ; z++)
                         {
                             check.Z = z;
-                            if (voxels.Contains(check) && voxels[check].layer == 0)
+                            if (voxels.Contains(check) && voxels[check].Layer == 0)
                             {
                                 ret.Add(check);
                             }

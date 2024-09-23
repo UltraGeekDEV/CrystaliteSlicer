@@ -16,8 +16,6 @@ namespace CrystaliteSlicer.LayerGeneration
         int maxLayerThickness;
         IVoxelCollection voxels;
 
-        int maxZ;
-        int minZ;
         (int minZ, int maxZ)[,] height;
         float[,] maxHeight;
         (int minZ, int maxZ)[,] nextHeight;
@@ -237,13 +235,6 @@ namespace CrystaliteSlicer.LayerGeneration
                 Task.WaitAll(tasks.ToArray());
 
                 //Get next layer
-                //var nextLayerVoxels = activeEdge.AsParallel().SelectMany(x => GetAttached(x)).Distinct().ToList();
-                //nextLayerVoxels.AsParallel().ForAll(x =>
-                //{
-                //    var voxel = voxels[x];
-                //    voxel.layer = curLayer;
-                //    voxels[x] = voxel;
-                //});
 
                 var results = new List<Vector3Int>[voxels.Size.X];
 

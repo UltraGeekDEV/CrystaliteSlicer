@@ -452,9 +452,3 @@ $RECYCLE.BIN/
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-/DebugSlicer/DebugSlicer.csproj
-/DebugSlicer/VoxelToMeshConverter.cs
-/DebugSlicer/STLHelper.cs
-/DebugSlicer/Program.cs
-/VisualDebug/VisualDebug.csproj
-/DebugSlicer/JankGcodegenerator.cs

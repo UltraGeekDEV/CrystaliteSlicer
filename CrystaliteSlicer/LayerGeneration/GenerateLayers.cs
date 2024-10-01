@@ -264,9 +264,7 @@ namespace CrystaliteSlicer.LayerGeneration
                 Task.WaitAll(tasks.ToArray());
 
                 var nextLayerVoxels = results.AsParallel().SelectMany(x=>x).ToList();
-                Console.WriteLine($"Next Layer Count: {nextLayerVoxels.Count}");
                 var stillOpen = activeEdge.AsParallel().Where(HasOpenFace).ToList();
-                Console.WriteLine($"Still Open Count: {stillOpen.Count}");
                 var allActiveVoxels = stillOpen.AsParallel().Union(nextLayerVoxels.AsParallel().Where(HasOpenFace));
                 var groupedEdge = allActiveVoxels.GroupBy(x => new Vector3Int(x.X, x.Y)).ToList();
                 groupedEdge.AsParallel().ForAll(x =>

@@ -48,6 +48,7 @@ namespace Models
         public static float RetractionDistance { get => Instance.retractionDistance; set => Instance.retractionDistance = value; }
         public static float RetractionSpeed { get => Instance.retractionSpeed; set => Instance.retractionSpeed = value; }
         public static float OverhangOverlap { get => Instance.overhangOverlap; set => Instance.overhangOverlap = value; }
+        public static bool TimelapseEnabled { get => Instance.timelapseEnabled; set => Instance.timelapseEnabled = value; }
 
         //model settings -to be removed-
         public Vector3 rotation;
@@ -81,5 +82,8 @@ namespace Models
         public float smoothingAngle;
         public int smoothingCount;
         public float overhangOverlap;
+
+        //timelapse settings
+        private bool timelapseEnabled;
     }
 }

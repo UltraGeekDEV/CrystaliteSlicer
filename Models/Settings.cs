@@ -84,6 +84,6 @@ namespace Models
         public float overhangOverlap;
 
         //timelapse settings
-        private bool timelapseEnabled;
+        public bool timelapseEnabled;
     }
 }

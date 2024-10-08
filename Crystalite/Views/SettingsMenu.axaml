@@ -1,0 +1,106 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             x:Class="Crystalite.SettingsMenu">
+	<ScrollViewer>
+		<StackPanel Background="Transparent">
+			<Expander Header="Material Settings" IsExpanded="False" ExpandDirection="Down">
+				<Grid>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="3*"/>
+						<ColumnDefinition Width="1*" MinWidth="60"/>
+					</Grid.ColumnDefinitions>
+					<Grid.RowDefinitions>
+						<RowDefinition/>
+						<RowDefinition/>
+						<RowDefinition/>
+						<RowDefinition/>
+					</Grid.RowDefinitions>
+					<TextBlock Grid.Column="0" Grid.Row="0">Hotend</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="0" Text="{Binding HotendTemp,Mode=TwoWay}"></TextBox>
+					<TextBlock Grid.Column="1" Grid.Row="0" Text="°C" Classes="unit" />
+					<TextBlock Grid.Column="0" Grid.Row="1" >Build Plate</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="1"  Text="{Binding BedTemp,Mode=TwoWay}"></TextBox>
+					<TextBlock Grid.Column="1" Grid.Row="1" Text="°C" Classes="unit" />
+					<TextBlock Grid.Column="0" Grid.Row="2" >Fan Speed</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="2" Text="{Binding FanSpeed,Mode=TwoWay}"></TextBox>
+					<TextBlock Grid.Column="1" Grid.Row="2" Text="%" Classes="unit" />
+					<TextBlock Grid.Column="0" Grid.Row="3" >Extrusion Multiplier</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="3" Text="{Binding ExtrusionMult,Mode=TwoWay}"></TextBox>
+					<TextBlock Grid.Column="1" Grid.Row="3" Text="%" Classes="unit" />
+				</Grid>
+			</Expander>
+			<Expander Header="Printer Settings" IsExpanded="False">
+				<Grid>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="2*"/>
+						<ColumnDefinition Width="1*"/>
+					</Grid.ColumnDefinitions>
+					<Grid.RowDefinitions>
+						<RowDefinition/>
+						<RowDefinition/>
+						<RowDefinition/>
+						<RowDefinition/>
+					</Grid.RowDefinitions>
+					<TextBlock Grid.Column="0" Grid.Row="0">Nozzle Diameter</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="0" Text="{Binding NozzleDiameter,Mode=TwoWay}" ></TextBox>
+					<TextBlock Grid.Column="1" Grid.Row="0" Text="mm" Classes="unit" />
+					<TextBlock Grid.Column="0" Grid.Row="1">Max Slope</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="1" Text="{Binding MaxSlope,Mode=TwoWay}"></TextBox>
+					<TextBlock Grid.Column="1" Grid.Row="1" Text="°" Classes="unit" />
+					<TextBlock Grid.Column="0" Grid.Row="2">Max Layer Height</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="2" Text="{Binding MaxLayerHeight,Mode=TwoWay}"></TextBox>
+					<TextBlock Grid.Column="1" Grid.Row="2" Text="mm" Classes="unit" />
+				</Grid>
+			</Expander>
+			<Expander Header="Speed Settings" IsExpanded="False">
+				<Grid>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="2*"/>
+						<ColumnDefinition Width="1*"/>
+					</Grid.ColumnDefinitions>
+					<Grid.RowDefinitions>
+						<RowDefinition/>
+						<RowDefinition/>
+						<RowDefinition/>
+						<RowDefinition/>
+					</Grid.RowDefinitions>
+					<TextBlock Grid.Column="0" Grid.Row="0">Outer Wall Speed</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="0" Text="{Binding OuterWallSpeed,Mode=TwoWay}" ></TextBox>
+					<TextBlock Grid.Column="1" Grid.Row="0" Text="mm/s" Classes="unit" />
+					<TextBlock Grid.Column="0" Grid.Row="1">Inner Wall Speed</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="1" Text="{Binding InnerWallSpeed,Mode=TwoWay}" ></TextBox>
+					<TextBlock Grid.Column="1" Grid.Row="1" Text="mm/s" Classes="unit" />
+					<TextBlock Grid.Column="0" Grid.Row="2">Infill Speed</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="2" Text="{Binding InfillSpeed,Mode=TwoWay}" ></TextBox>
+					<TextBlock Grid.Column="1" Grid.Row="2" Text="mm/s" Classes="unit" />
+					<TextBlock Grid.Column="0" Grid.Row="3">Travel Speed</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="3" Text="{Binding TravelSpeed,Mode=TwoWay}" ></TextBox>
+					<TextBlock Grid.Column="1" Grid.Row="3" Text="mm/s" Classes="unit" />
+				</Grid>
+			</Expander>
+			<Expander Header="Wall Settings" IsExpanded="False">
+				<Grid>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="2*"/>
+						<ColumnDefinition Width="1*"/>
+					</Grid.ColumnDefinitions>
+					<Grid.RowDefinitions>
+						<RowDefinition/>
+						<RowDefinition/>
+						<RowDefinition/>
+					</Grid.RowDefinitions>
+					<TextBlock Grid.Column="0" Grid.Row="0">Wall Count</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="0" Text="{Binding WallCount,Mode=TwoWay}" ></TextBox>
+					<TextBlock Grid.Column="0" Grid.Row="1">Top/Bottom Thickness</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="1" Text="{Binding TopThickness,Mode=TwoWay}" ></TextBox>
+					<TextBlock Grid.Column="1" Grid.Row="1" Text="mm" Classes="unit" />
+					<TextBlock Grid.Column="0" Grid.Row="2">Infill Density</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="2" Text="{Binding InfillDensity,Mode=TwoWay}" ></TextBox>
+					<TextBlock Grid.Column="1" Grid.Row="2" Text="%" Classes="unit" />
+				</Grid>
+			</Expander>
+		</StackPanel>
+	</ScrollViewer>
+</UserControl>

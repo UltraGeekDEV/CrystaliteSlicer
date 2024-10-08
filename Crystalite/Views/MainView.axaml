@@ -3,14 +3,48 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:Crystalite.ViewModels"
+             xmlns:cr="clr-namespace:Crystalite"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Crystalite.Views.MainView"
              x:DataType="vm:MainViewModel">
-  <Design.DataContext>
-    <!-- This only sets the DataContext for the previewer in an IDE,
-         to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-    <vm:MainViewModel />
-  </Design.DataContext>
-
-  <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+	<Grid Background="Black">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="50"/>
+			<RowDefinition Height="1*"/>
+		</Grid.RowDefinitions>
+		<Grid Grid.Row="1" >
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="10*"/>
+				<ColumnDefinition Width="340"/>
+			</Grid.ColumnDefinitions>
+			<Grid.RowDefinitions>
+				<RowDefinition Height="1*"/>
+				<RowDefinition Height="60"/>
+			</Grid.RowDefinitions>
+			<Button Grid.Row="1" VerticalAlignment="Center" Margin="20 0 0 0" Width="100" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">Slice</Button>
+			<Button Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0 0 20 0" Width="150" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">Save Gcode</Button>
+			<Expander Grid.Column="1" VerticalAlignment="Top" Header="Settings" Padding="0" IsExpanded="False" Classes="SettingsToggle">
+				<Expander.Styles>
+					<Style Selector="Expander.SettingsToggle ToggleButton">
+						<Setter Property="BorderThickness" Value="0 0 0 0"/>
+					</Style>
+					<Style Selector="Expander:not(:expanded).SettingsToggle ToggleButton">
+						<Setter Property="BorderThickness" Value="0 0 0 2"/>
+						<Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+					</Style>
+					<Style Selector="Expander:expanded.SettingsToggle /template/ Border#ExpanderContent">
+						<Setter Property="BorderThickness" Value="0"/>
+						<Setter Property="Padding" Value="0"/>
+						<Setter Property="BorderBrush" Value="Transparent"/>
+					</Style>
+				</Expander.Styles>
+				<cr:SettingsMenu/>
+			</Expander>
+		</Grid>
+		<Grid Background="{StaticResource Background}" Grid.Row="0" ColumnDefinitions="1*,2*,340">
+			<Border Grid.ColumnSpan="3" BorderThickness="0 0 0 2" BorderBrush="{StaticResource Accent}">
+				
+			</Border>
+		</Grid>
+	</Grid>
 </UserControl>

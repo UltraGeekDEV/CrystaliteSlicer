@@ -13,6 +13,7 @@
 			<RowDefinition Height="1*"/>
 		</Grid.RowDefinitions>
 		<Grid Grid.Row="1" >
+			<cr:_3DViewPort Grid.RowSpan="2" Grid.ColumnSpan="2" Background="{StaticResource Background}"/>
 			<Grid.ColumnDefinitions>
 				<ColumnDefinition Width="10*"/>
 				<ColumnDefinition Width="340"/>
@@ -46,5 +47,6 @@
 				
 			</Border>
 		</Grid>
+		
 	</Grid>
 </UserControl>

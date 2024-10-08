@@ -3,6 +3,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -10,7 +11,18 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AvaloniaResource Remove="Assets\Shaders\ViewPort.frag" />
+    <AvaloniaResource Remove="Assets\Shaders\ViewPort.vert" />
+  </ItemGroup>
+
+  <ItemGroup>
     <AvaloniaXaml Remove="Assets\Brushes.axaml" />
+    <AvaloniaXaml Remove="Assets\Controls\ViewPort.axaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Assets\Controls\UserControl1.axaml.cs" />
+    <Compile Remove="Assets\Controls\ViewPort.axaml.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,5 +44,18 @@
     <AvaloniaResource Update="Assets\Brushes.axaml">
       <SubType>Designer</SubType>
     </AvaloniaResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Assets\Shaders\ViewPort.frag">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Shaders\ViewPort.vert">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Models\" />
   </ItemGroup>
 </Project>

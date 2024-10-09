@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Avalonia;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -34,8 +35,9 @@ namespace Crystalite.Utils
         }
         public CameraData()
         {
-            pos = new Vector3(0,0,-10);
-            targetPos = new Vector3();
+            targetPos = new Vector3(0,1,0);
+            dist = 20;
+            eulerAngles = new Vector3(25,45,0);
         }
 
         
@@ -56,6 +58,8 @@ namespace Crystalite.Utils
 
             // Create the view matrix
             return Matrix4x4.CreateLookAt(cameraPosition, instance.targetPos, Vector3.UnitY);
+            //return new Matrix4(matrix.M11, matrix.M12, matrix.M13, matrix.M14, matrix.M21, matrix.M22, matrix.M23, matrix.M24, matrix.M31, matrix.M32, matrix.M33, matrix.M34, matrix.M41, matrix.M42, matrix.M43, matrix.M44);
+
         }
     }
 }

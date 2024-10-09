@@ -21,7 +21,6 @@ public partial class _3DViewPort : UserControl
     public _3DViewPort()
     {
         InitializeComponent();
-
     }
 
     public void OpenGLViewPort_PointerPressed(object sender, PointerPressedEventArgs args)
@@ -65,8 +64,14 @@ public partial class _3DViewPort : UserControl
             var dir = (rmbPoint - cur) / Bounds.Width * CameraData.instance.sensitivity;
             CameraData.instance.eulerAngles.Y += (float)dir.X *72;
             CameraData.instance.eulerAngles.X -= (float)dir.Y *72;
-            CameraData.instance.eulerAngles.X = Math.Clamp(CameraData.instance.eulerAngles.X, -170, 170);
+            CameraData.instance.eulerAngles.X = Math.Clamp(CameraData.instance.eulerAngles.X, -85, 85);
             rmbPoint = cur;
         }
+    }
+    public void OpenGLViewPort_PointerWheelChanged(object sender, PointerWheelEventArgs args)
+    {
+        var change = args.Delta;
+        CameraData.instance.dist -= (float)change.Y;
+        CameraData.instance.dist = MathF.Max(CameraData.instance.dist, 0.01f);
     }
 }

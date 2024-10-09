@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="Assets\Controls\CustomGLBase.cs" />
     <Compile Remove="Assets\Controls\UserControl1.axaml.cs" />
     <Compile Remove="Assets\Controls\ViewPort.axaml.cs" />
   </ItemGroup>
@@ -33,6 +34,7 @@
     <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
     <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="OpenTK" Version="4.8.2" />
   </ItemGroup>
 
   <ItemGroup>
@@ -56,6 +58,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Models\" />
+    <Folder Include="CustomControls\" />
   </ItemGroup>
 </Project>

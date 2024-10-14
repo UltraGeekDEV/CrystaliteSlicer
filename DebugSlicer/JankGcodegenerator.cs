@@ -47,7 +47,9 @@ namespace DebugSlicer
 
             double extrusion = 0;
             double extrusionConstant = 1.1f*4*Settings.NozzleDiameter * Settings.Resolution.Z / (Math.PI * Math.Pow(1.75, 2));
-            int layer = 1;
+            int layer = 0;
+            ret.Add($";LAYER_COUNT:{toolpath.Count(x=>x is NewLayerLine)}");
+            ret.Add($";LAYER:{layer++}");
             bool prevTravel = toolpath.First().Travel;
             bool changePrintFeedRate = true;
             float curPrintFeedRate = wallFeedrate;
@@ -91,7 +93,7 @@ namespace DebugSlicer
                 {
                     if (prevTravel)
                     {
-                        //extrusion += Settings.RetractionDistance * 0.05f;
+                        extrusion += Settings.RetractionDistance * 0.05f;
                         ret.Add($"G1 F{retractFeedrate.ToString(nfi)} E{(extrusion).ToString(nfi)}");
                     }
                     extrusion += line.Flow * line.Length() * extrusionConstant;

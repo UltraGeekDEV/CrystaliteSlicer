@@ -11,8 +11,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <AvaloniaResource Remove="Assets\Shaders\ViewPort.frag" />
-    <AvaloniaResource Remove="Assets\Shaders\ViewPort.vert" />
+    <AvaloniaResource Remove="Assets\Shaders\LitShader.frag" />
+    <AvaloniaResource Remove="Assets\Shaders\LitShader.vert" />
+    <AvaloniaResource Remove="Assets\Shaders\UnlitShader.frag" />
+    <AvaloniaResource Remove="Assets\Shaders\UnlitShader.vert" />
   </ItemGroup>
 
   <ItemGroup>
@@ -49,10 +51,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Assets\Shaders\ViewPort.frag">
+    <None Update="Assets\Shaders\LitShader.frag">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="Assets\Shaders\ViewPort.vert">
+    <None Update="Assets\Shaders\LitShader.vert">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Shaders\UnlitShader.frag">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Shaders\UnlitShader.vert">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

@@ -7,6 +7,7 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="Crystalite.Views.MainWindow"
         Icon="/Assets/avalonia-logo.ico"
-        Title="Crystalite">
+        Title="Crystalite"
+		DragDrop.AllowDrop="True">
         <views:MainView />
 </Window>

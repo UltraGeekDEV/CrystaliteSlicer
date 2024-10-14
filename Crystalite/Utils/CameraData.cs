@@ -36,8 +36,8 @@ namespace Crystalite.Utils
         public CameraData()
         {
             targetPos = new Vector3(0,1,0);
-            dist = 20;
-            eulerAngles = new Vector3(25,45,0);
+            dist = 40;
+            eulerAngles = new Vector3(25,-45,0);
         }
 
         

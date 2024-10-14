@@ -24,6 +24,22 @@ namespace Crystalite.ViewModels
             set => this.RaiseAndSetIfChanged(ref Settings.Instance.printVolume, value);
         }
 
+        public float PrintVolumeX
+        {
+            get => Settings.PrintVolume.X;
+            set => this.RaiseAndSetIfChanged(ref Settings.Instance.printVolume.X, value);
+        }
+        public float PrintVolumeY
+        {
+            get => Settings.PrintVolume.Y;
+            set => this.RaiseAndSetIfChanged(ref Settings.Instance.printVolume.Y, value);
+        }
+        public float PrintVolumeZ
+        {
+            get => Settings.PrintVolume.Z;
+            set => this.RaiseAndSetIfChanged(ref Settings.Instance.printVolume.Z, value);
+        }
+
         public Vector3 Rotation
         {
             get => Settings.Rotation;

@@ -1,4 +1,5 @@
-﻿using Avalonia.Controls;
+﻿using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Crystalite.Models;
@@ -17,50 +18,127 @@ namespace Crystalite.Utils
 {
     public static class Slicer
     {
-        private static List<string> files = new List<string>();
         private static MeshData models = new MeshData();
-        public static void InitSlicer()
-        {
-            SelectFile();
-            var mesh = new MeshImporter().ImportMesh(files[0]).OriginalMesh;
-            models.meshes.Add(new Models.Mesh(mesh));
-            mesh = new MeshImporter().ImportMesh(files[0]).OriginalMesh;
-            models.meshes.Add(new Models.Mesh(mesh));
-            models.meshes[1].transform *= Matrix4x4.CreateTranslation(new Vector3(-5f, 0, 7))*Matrix4x4.CreateFromYawPitchRoll(60*(MathF.PI/180.0f),0,0);
-            models.meshes.Add(new Models.Mesh(mesh));
-            models.meshes[2].transform *= Matrix4x4.CreateTranslation(new Vector3(-5f, 0, -7)) * Matrix4x4.CreateFromYawPitchRoll(-60 * (MathF.PI / 180.0f), 0, 0);
-            models.meshes[0].col = new OpenTK.Mathematics.Vector3(0.9372f, 0.3254f, 0.0666f);
-            models.meshes[1].col = new OpenTK.Mathematics.Vector3(1, 0, 0);
-            models.meshes[2].col = new OpenTK.Mathematics.Vector3(0, 1, 0);
-            MeshData.instance = models;
+        private static Mesh buildPlate = new Mesh();
 
+        public static void Setup()
+        {
+            MeshData.instance = models;
         }
 
-        public static void SelectFile()
+        public static void ImportMesh(string path)
         {
-            var topLevel = TopLevel.GetTopLevel(MainWindow.instance);
+            var mesh = new MeshImporter().ImportMesh(path).OriginalMesh;
+            var importedMesh = new Mesh(mesh, ShaderType.lit);
+            models.meshes.Add(importedMesh);
+            importedMesh.col = new OpenTK.Mathematics.Vector3(0.9372f, 0.3254f, 0.0666f);
+            importedMesh.transform = Matrix4x4.CreateTranslation(new Vector3(Settings.PrintVolume.X * 0.05f, -importedMesh.lowerLeft.Y * 0.1f, -Settings.PrintVolume.Z * 0.05f));
+            ConstructBuildPlate();
+            CameraData.instance.targetPos = new Vector3(Settings.PrintVolume.X * 0.05f, 0, -Settings.PrintVolume.Z * 0.05f);
+        }
 
-            var filter = new List<FilePickerFileType>()
-                    {
-                        new FilePickerFileType("3D Files")
-                        {
-                            Patterns = new[]{"*.stl","*.obj"}
-                        }
-                    };
+        private static void ConstructBuildPlate()
+        {
+            List<Triangle> tris;
+            float plateThickness = 5;
+            var plateSize = Settings.PrintVolume;
+            plateSize.Z = -plateThickness;
 
-            var selectedFiles = topLevel.StorageProvider.OpenFilePickerAsync(
-                new FilePickerOpenOptions()
-                {
-                    Title = "Select file",
-                    FileTypeFilter = filter,
-                    AllowMultiple = false
-                }).Result;
-
-            if (selectedFiles.Count != 0)
+            tris = GetUnitCube();
+            foreach (Triangle triangle in tris)
             {
-                var path = Uri.UnescapeDataString(selectedFiles[0].Path.AbsolutePath);
-                files.Add(path);
+                triangle.Scale(plateSize);
             }
+            buildPlate = new Mesh(tris, ShaderType.lit);
+            buildPlate.col = new OpenTK.Mathematics.Vector3(0.2f, 0.2f, 0.2f);
+            models.meshes.Add(buildPlate);
+
+            float xyzmarkerThickness = 2;
+            var scale = new Vector3(5 * plateThickness, xyzmarkerThickness, -xyzmarkerThickness);
+            tris = GetUnitCube();
+            foreach (Triangle triangle in tris)
+            {
+                triangle.Scale(scale);
+                triangle.Offset(new Vector3(0, -xyzmarkerThickness, +xyzmarkerThickness));
+            }
+
+            var xMarker = new Mesh(tris, ShaderType.unlit);
+            xMarker.col = new OpenTK.Mathematics.Vector3(1,0,0);
+            models.meshes.Add(xMarker);
+
+            scale = new Vector3(xyzmarkerThickness, 5 * plateThickness, -xyzmarkerThickness);
+            tris = GetUnitCube();
+            foreach (Triangle triangle in tris)
+            {
+                triangle.Scale(scale);
+                triangle.Offset(new Vector3(-xyzmarkerThickness, 0, +xyzmarkerThickness));
+            }
+
+            var yMarker = new Mesh(tris, ShaderType.unlit);
+            yMarker.col = new OpenTK.Mathematics.Vector3(0, 1, 0);
+            models.meshes.Add(yMarker);
+
+            scale = new Vector3(xyzmarkerThickness,  xyzmarkerThickness, -5*plateThickness-xyzmarkerThickness);
+            tris = GetUnitCube();
+            foreach (Triangle triangle in tris)
+            {
+                triangle.Scale(scale);
+                triangle.Offset(new Vector3( - xyzmarkerThickness, - xyzmarkerThickness, 5*plateThickness+2*xyzmarkerThickness));
+            }
+
+            var zMarker = new Mesh(tris, ShaderType.unlit);
+            zMarker.col = new OpenTK.Mathematics.Vector3(0, 0, 1);
+            models.meshes.Add(zMarker);
+
+            scale = new Vector3(xyzmarkerThickness, xyzmarkerThickness, -xyzmarkerThickness);
+            tris = GetUnitCube();
+            foreach (Triangle triangle in tris)
+            {
+                triangle.Scale(scale);
+                triangle.Offset(new Vector3(-xyzmarkerThickness, -xyzmarkerThickness, xyzmarkerThickness));
+            }
+
+            var cornerMarker = new Mesh(tris, ShaderType.unlit);
+            cornerMarker.col = new OpenTK.Mathematics.Vector3(1, 1, 1);
+            models.meshes.Add(cornerMarker);
+
+        }
+        private static List<Triangle> GetUnitCube()
+        {
+            var verts = new Vector3[]
+            {
+                new Vector3(0,0,0),
+                new Vector3(1,0,0),
+                new Vector3(1,1,0),
+                new Vector3(0,1,0),
+                new Vector3(0,0,1),
+                new Vector3(1,0,1),
+                new Vector3(1,1,1),
+                new Vector3(0,1,1),
+            };
+
+            var tris = new List<Triangle>()
+            {
+                //Top
+                new Triangle(verts[0],verts[1],verts[2]),
+                new Triangle(verts[0],verts[2],verts[3]),
+                //Bottom
+                new Triangle(verts[4],verts[6],verts[5]),
+                new Triangle(verts[4],verts[7],verts[6]),
+                //Front
+                new Triangle(verts[0],verts[4],verts[5]),
+                new Triangle(verts[0],verts[5],verts[1]),
+                //Right
+                new Triangle(verts[1],verts[5],verts[2]),
+                new Triangle(verts[2],verts[5],verts[6]),
+                //Back
+                new Triangle(verts[3],verts[2],verts[7]),
+                new Triangle(verts[2],verts[6],verts[7]),
+                //Left
+                new Triangle(verts[0],verts[3],verts[4]),
+                new Triangle(verts[4],verts[3],verts[7]),
+            };
+            return tris;
         }
     }
 }

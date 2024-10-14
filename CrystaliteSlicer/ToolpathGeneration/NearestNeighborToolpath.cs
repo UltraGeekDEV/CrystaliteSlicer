@@ -232,13 +232,13 @@ namespace CrystaliteSlicer.ToolpathGeneration
         }
         public IEnumerable<Line> GetPath()
         {
-            var tasks = layers.AsParallel().Select(x=>x.GroupBy(y=>y.Value.wallCount)).Select(x=>x.Select((y,id) => (Task.Run(() => GetLayerPath(y.ToDictionary(z=>z.Key,z=>(z.Value.height,z.Value.thickness)),y.Key, id)),y.Key)));
-            Task.WaitAll(tasks.AsParallel().SelectMany(x=>x.Select(y=>y.Item1)).ToArray());
+            var tasks = layers.Select(x => x.GroupBy(y => y.Value.wallCount).OrderBy(y=>y.Key).
+            Select(y => Task.Run(()=> GetLayerPath(y.ToDictionary(z => z.Key, z => (z.Value.height, z.Value.thickness)), y.Key))));
+            Task.WaitAll(tasks.SelectMany(x=>x).ToArray());
 
-            var combinedPath = new List<Line>();
+            var layerPaths = tasks.SelectMany(x => x.Select(x => x.Result)).Where(x=>x.Count > 0).ToList();
 
-            var layerPaths = tasks.AsParallel().Select(x => x.OrderBy(y => y.Key).SelectMany(y => y.Item1.Result).ToList()).Where(y => y.Count > 0).ToList();
-
+            List<Line> combinedPath = new List<Line>();
             int count = 0;
 
             foreach (var layer in layerPaths)
@@ -258,7 +258,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
             return combinedPath;
         }
 
-        private List<Line> GetLayerPath(Dictionary<Vector3Int, (int height, int thickness)> pointData, int wallCount,int id)
+        private List<Line> GetLayerPath(Dictionary<Vector3Int, (int height, int thickness)> pointData, int wallCount)
         {
             var direction = new Random().Next(0, 2);
 

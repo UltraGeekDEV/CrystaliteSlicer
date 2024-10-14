@@ -10,10 +10,6 @@ namespace CrystaliteSlicer.MeshImport
 {
     public interface IImportMesh
     {
-        public IImportMesh ImportMesh(string path);
-        public IImportMesh ApplyTransform();
-
-        public IEnumerable<Triangle> TransformedMesh { get; set; }
-        public IEnumerable<Triangle> OriginalMesh { get; set; }
+        public List<Triangle> ImportMesh(string path);
     }
 }

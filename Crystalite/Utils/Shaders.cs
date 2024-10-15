@@ -15,13 +15,17 @@ namespace Crystalite.Utils
             shaders = new Dictionary<ShaderType, Shader>()
             {
                 {ShaderType.lit,new Shader("LitShader.frag","LitShader.vert")},
-                {ShaderType.unlit,new Shader("UnlitShader.frag","UnlitShader.vert")}
+                {ShaderType.unlit,new Shader("UnlitShader.frag","UnlitShader.vert")},
+                {ShaderType.frameBuffer,new Shader("FrameBuffer.frag","FrameBuffer.vert")},
+                {ShaderType.antiAliasing,new Shader("FXAA.frag","FXAA.vert")},
             };
         }
     }
     public enum ShaderType
     {
         lit,
-        unlit
+        unlit,
+        frameBuffer,
+        antiAliasing
     }
 }

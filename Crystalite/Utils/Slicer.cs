@@ -2,6 +2,7 @@
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using Crystalite.Models;
 using Crystalite.Views;
 using CrystaliteSlicer.MeshImport;
@@ -9,6 +10,7 @@ using Models;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
@@ -23,18 +25,26 @@ namespace Crystalite.Utils
 
         public static void Setup()
         {
+            ConstructBuildPlate();
             MeshData.instance = models;
+            CameraData.instance.targetPos = new Vector3(Settings.PrintVolume.X * 0.05f, 0, -Settings.PrintVolume.Z * 0.05f);
         }
 
-        public static void ImportMesh(string path)
+        public static void ImportMesh(Uri path)
         {
-            var mesh = new MeshImporter().ImportMesh(path).OriginalMesh;
-            var importedMesh = new Mesh(mesh, ShaderType.lit);
-            models.meshes.Add(importedMesh);
-            importedMesh.col = new OpenTK.Mathematics.Vector3(0.9372f, 0.3254f, 0.0666f);
-            importedMesh.transform = Matrix4x4.CreateTranslation(new Vector3(Settings.PrintVolume.X * 0.05f, -importedMesh.lowerLeft.Y * 0.1f, -Settings.PrintVolume.Z * 0.05f));
-            ConstructBuildPlate();
-            CameraData.instance.targetPos = new Vector3(Settings.PrintVolume.X * 0.05f, 0, -Settings.PrintVolume.Z * 0.05f);
+            var mesh = new MeshImporter().ImportMesh(path);
+
+            OpenGLUtils.QueueAction(() =>
+            {
+                var importedMesh = new Mesh(mesh, ShaderType.lit);
+                importedMesh.col = new OpenTK.Mathematics.Vector3(0.9372f, 0.3254f, 0.0666f);
+                var pos = (importedMesh.upperRight - importedMesh.lowerLeft) * 0.5f;
+                pos += Settings.PrintVolume*new Vector3(0.05f,0,-0.05f);
+                pos.Y = -importedMesh.lowerLeft.Y;
+                importedMesh.transform = Matrix4x4.CreateTranslation(pos);
+                models.meshes.Add(importedMesh);
+            });
+
         }
 
         private static void ConstructBuildPlate()
@@ -51,6 +61,7 @@ namespace Crystalite.Utils
             }
             buildPlate = new Mesh(tris, ShaderType.lit);
             buildPlate.col = new OpenTK.Mathematics.Vector3(0.2f, 0.2f, 0.2f);
+            buildPlate.clickable = false;
             models.meshes.Add(buildPlate);
 
             float xyzmarkerThickness = 2;
@@ -64,6 +75,7 @@ namespace Crystalite.Utils
 
             var xMarker = new Mesh(tris, ShaderType.unlit);
             xMarker.col = new OpenTK.Mathematics.Vector3(1,0,0);
+            xMarker.clickable = false;
             models.meshes.Add(xMarker);
 
             scale = new Vector3(xyzmarkerThickness, 5 * plateThickness, -xyzmarkerThickness);
@@ -76,6 +88,7 @@ namespace Crystalite.Utils
 
             var yMarker = new Mesh(tris, ShaderType.unlit);
             yMarker.col = new OpenTK.Mathematics.Vector3(0, 1, 0);
+            yMarker.clickable = false;
             models.meshes.Add(yMarker);
 
             scale = new Vector3(xyzmarkerThickness,  xyzmarkerThickness, -5*plateThickness-xyzmarkerThickness);
@@ -88,6 +101,7 @@ namespace Crystalite.Utils
 
             var zMarker = new Mesh(tris, ShaderType.unlit);
             zMarker.col = new OpenTK.Mathematics.Vector3(0, 0, 1);
+            zMarker.clickable = false;
             models.meshes.Add(zMarker);
 
             scale = new Vector3(xyzmarkerThickness, xyzmarkerThickness, -xyzmarkerThickness);
@@ -100,10 +114,11 @@ namespace Crystalite.Utils
 
             var cornerMarker = new Mesh(tris, ShaderType.unlit);
             cornerMarker.col = new OpenTK.Mathematics.Vector3(1, 1, 1);
+            cornerMarker.clickable = false;
             models.meshes.Add(cornerMarker);
 
         }
-        private static List<Triangle> GetUnitCube()
+        public static List<Triangle> GetUnitCube()
         {
             var verts = new Vector3[]
             {

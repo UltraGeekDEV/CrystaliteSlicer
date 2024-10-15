@@ -5,9 +5,12 @@ using Avalonia.OpenGL;
 using Avalonia.OpenGL.Controls;
 using Avalonia.Platform.Interop;
 using Avalonia.Threading;
+using Crystalite.Models;
 using Crystalite.Utils;
+using Models;
 using OpenTK.Graphics.ES30;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -15,6 +18,7 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using static Crystalite.Utils.OpenGLUtils;
+using static Crystalite.Utils.Shaders;
 
 namespace Crystalite
 {
@@ -26,17 +30,18 @@ namespace Crystalite
         private int frameBufferObject;
         private int frameBufferTexture;
         private int renderBufferObject;
-        private int fboVBO, fboVAO;
-        private float[] fboTri =
+        private float[] fboTri = new float[]
         {
-            1.0f,-1.0f, 1.0f,0.0f,
-            -1.0f,-1.0f,0.0f,0.0f,
-            -1.0f,1.0f,0.0f,1.0f,
-
-            1.0f,1.0f,1.0f,1.0f,
-            1.0f,-1.0f,1.0f,0.0f,
-            -1.0f,1.0f,0.0f,1.0f
+            1.0f,-1.0f,5.0f,    1.0f,0.0f,0.0f,
+            -1.0f,-1.0f,5.0f,   0.0f,0.0f,0.0f,
+            -1.0f,1.0f,5.0f,    0.0f,1.0f,0.0f,
+  
+            1.0f,1.0f,5.0f,     1.0f,1.0f,0.0f,
+            1.0f,-1.0f,5.0f,    1.0f,0.0f,0.0f,
+            -1.0f,1.0f,5.0f,    0.0f,1.0f,0.0f,
         };
+
+        Mesh postProcess;
 
         private void SetupOpenTK(GlInterface aGLContext)
         {
@@ -50,8 +55,9 @@ namespace Crystalite
                 return;
 
             if (double.IsNaN(size.Height))
-                return;
+                return;;
 
+            Debug.WriteLine("resized");
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, frameBufferObject);
 
             //Set texture info and resize it
@@ -70,6 +76,10 @@ namespace Crystalite
             GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthStencilAttachment, RenderbufferTarget.Renderbuffer, renderBufferObject);
             
             CheckError("RB resize");
+
+            shaders[Utils.ShaderType.frameBuffer].Activate();
+            GL.Uniform1(GL.GetUniformLocation(shaders[Utils.ShaderType.frameBuffer].program, "screenTexture"), 0);
+            CheckError("Set texture");
         }
         protected override unsafe void OnOpenGlInit(GlInterface aGl)
         {
@@ -77,28 +87,39 @@ namespace Crystalite
             Shaders.Setup();
             Slicer.Setup();
             CheckError("Early Check");
+            GL.DebugMessageCallback((DebugSource source,DebugType type,int id,DebugSeverity severity,int length,IntPtr pMessage,IntPtr pUserParam) => 
+{
+                // In order to access the string pointed to by pMessage, you can use Marshal
+                // class to copy its contents to a C# string without unsafe code. You can
+                // also use the new function Marshal.PtrToStringUTF8 since .NET Core 1.1.
+                string message = Marshal.PtrToStringAnsi(pMessage, length);
+
+                // The rest of the function is up to you to implement, however a debug output
+                // is always useful.
+                Debug.WriteLine("[{0} source={1} type={2} id={3}] {4}", severity, source, type, id, message);
+
+                // Potentially, you may want to throw from the function for certain severity
+                // messages.
+                if (type == DebugType.DebugTypeError)
+                {
+                    throw new Exception(message);
+                }
+            },0);
 
             frameBufferObject = GL.GenFramebuffer();
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, frameBufferObject);
 
             frameBufferTexture = GL.GenTexture();
-
             renderBufferObject = GL.GenRenderbuffer();
 
-            this.GetObservable(BoundsProperty).Subscribe(Resize);
+            this.GetObservable(BoundsProperty).Subscribe((a)=> OpenGLUtils.QueueAction(()=>Resize(a)));
 
-            fboVAO = GL.GenVertexArray();
-            fboVBO = GL.GenBuffer();
-            GL.BindVertexArray(fboVAO);
-            GL.BindBuffer(BufferTarget.ArrayBuffer, fboVBO);
-            fixed (float* fboQuad = fboTri)
-                GL.BufferData(BufferTarget.ArrayBuffer, sizeof(float) * fboTri.Length, (nint)fboQuad, BufferUsageHint.StaticDraw);
-            GL.EnableVertexAttribArray(0);
-            GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float,false, 4 * sizeof(float), 0);
-            GL.EnableVertexAttribArray(1);
-            GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float,false, 4 * sizeof(float), 2*sizeof(float));
-
-            CheckError("Setup fbo quad");
+            postProcess = new Mesh(new List<Triangle>
+            {
+                new Triangle(new Vector3(-10.0f,0,-10.0f),new Vector3(-10.0f,0,10.0f),new Vector3(10.0f,0,-10.0f)),
+                new Triangle(new Vector3(-10.0f,0f,10.0f),new Vector3(10.0f,0,10.0f),new Vector3(10.0f,0,-10.0f))
+            },Utils.ShaderType.frameBuffer);
+            //MeshData.instance.meshes.Add(postProcess);
         }
 
         protected override void OnOpenGlDeinit(GlInterface GL)
@@ -112,21 +133,29 @@ namespace Crystalite
         protected override unsafe void OnOpenGlRender(GlInterface aGL, int fb)
         {
             Dispatcher.UIThread.Post(RequestNextFrameRendering, DispatcherPriority.Render);
-
-            GL.ClearColor(0.091f, 0.09f, 0.1f, 1.0f);
-            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            OpenGLUtils.ExecuteSyncQueue();
+            CheckError("Render Early1");
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, frameBufferObject);
             GL.Enable(EnableCap.DepthTest);
             GL.Enable(EnableCap.CullFace);
+            GL.StencilOp(StencilOp.Keep, StencilOp.Keep, StencilOp.Replace);
+            GL.ClearColor(0.091f, 0.09f, 0.1f, 1.0f);
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
+            
 
             GL.CullFace(CullFaceMode.Back);
             GL.Viewport(0, 0, (int)Bounds.Width, (int)Bounds.Height);
 
             CheckError("Render Early");
 
+            GL.StencilFunc(StencilFunction.Always, 1, 0xFF);
+            GL.StencilMask(0xFF);
+
             foreach (var mesh in MeshData.instance.meshes)
             {
                 var shader = Shaders.shaders[mesh.shader];
                 shader.Activate();
+                mesh.vao.Bind();
 
                 var projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)(Bounds.Width / Bounds.Height), 0.01f, 1000f);
                 var view = CameraData.CreateViewMatrix();
@@ -145,13 +174,37 @@ namespace Crystalite
                 {
                     aGL.UniformMatrix4fv(modelLoc, 1, false, model);
                 }
-                mesh.vao.Bind();
-                GL.DrawArrays(PrimitiveType.Triangles, 0, mesh.vertices.Count/3);
+                GL.DrawArrays(PrimitiveType.Triangles, 0, mesh.vertices.Count * 6);
                 CheckError("Render");
+                mesh.vao.Unbind(); 
             }
 
-            GL.BindVertexArray(0);
-            GL.UseProgram(0);
+            GL.Disable(EnableCap.DepthTest);
+            GL.Disable(EnableCap.CullFace);
+
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, fb);
+            var postProcessShader = Shaders.shaders[Utils.ShaderType.frameBuffer];
+            postProcessShader.Activate();
+            GL.BindTexture(TextureTarget.Texture2D, frameBufferTexture);
+            GL.Uniform1(GL.GetUniformLocation(postProcessShader.program, "width"), (float)Bounds.Width);
+            GL.Uniform1(GL.GetUniformLocation(postProcessShader.program, "height"), (float)Bounds.Height);
+            postProcess.vao.Bind();
+            GL.DrawArrays(PrimitiveType.Triangles, 0, postProcess.vertices.Count * 6);
+
+            GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fb);
+            GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, frameBufferObject);
+            GL.BlitFramebuffer(0, 0, (int)Width-1, (int)Height-1, 0, 0, (int)Width-1, (int)Height-1, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
+            CheckError("Blit");
+
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, fb);
+            postProcessShader = Shaders.shaders[Utils.ShaderType.antiAliasing];
+            postProcessShader.Activate();
+            GL.BindTexture(TextureTarget.Texture2D, frameBufferTexture);
+            GL.Uniform1(GL.GetUniformLocation(postProcessShader.program, "width"), (float)Bounds.Width);
+            GL.Uniform1(GL.GetUniformLocation(postProcessShader.program, "height"), (float)Bounds.Height);
+            postProcess.vao.Bind();
+            GL.DrawArrays(PrimitiveType.Triangles, 0, postProcess.vertices.Count * 6);
+            CheckError("AA");
         }
         
     }

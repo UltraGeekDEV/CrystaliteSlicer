@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using Avalonia.Remote.Protocol.Input;
+using Avalonia.VisualTree;
 using Crystalite.Utils;
 using System;
 using System.Diagnostics;
@@ -18,24 +19,53 @@ public partial class _3DViewPort : UserControl
     private bool rmbWasPressed = false;
     private Point rmbPoint;
 
+    private bool lmbWasPressed = false;
+
     public _3DViewPort()
     {
         InitializeComponent();
+        AddHandler(PointerPressedEvent, OpenGLViewPort_PointerPressed, handledEventsToo: true);
+        AddHandler(PointerReleasedEvent, OpenGLViewPort_PointerReleased, handledEventsToo: true);
     }
 
     public void OpenGLViewPort_PointerPressed(object sender, PointerPressedEventArgs args)
     {
         Debug.WriteLine("Detected MouseDown");
         var point = args.GetCurrentPoint(sender as Control);
-        if (point.Properties.IsMiddleButtonPressed)
+        if (point.Properties.IsMiddleButtonPressed && !mmbWasPressed)
         {
             mmbWasPressed = true;
             mmbPoint = point.Position;
         }
-        if (point.Properties.IsRightButtonPressed)
+        if (point.Properties.IsRightButtonPressed && !rmbWasPressed)
         {
             rmbWasPressed = true;
             rmbPoint = point.Position;
+        }
+        if (point.Properties.IsLeftButtonPressed && !lmbWasPressed)
+        {
+            lmbWasPressed = true;
+            var view = this.FindDescendantOfType<OpenGLViewPort>();
+
+            var width = view.Bounds.Width;
+            var height = view.Bounds.Height;
+
+            float NDCx = (2.0f * (float)point.Position.X) / (float)width - 1.0f;
+            float NDCy = 1.0f - (2.0f * (float)point.Position.Y) / (float)height;
+            float NDCz = 1.0f;
+            var rayCLip = new Vector3(NDCx, NDCy, NDCz);
+
+            Matrix4x4 inverseProjection;
+            Matrix4x4.Invert(Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)(width / height), 0.01f, 1000f), out inverseProjection);
+            var rayView = Vector3.Transform(rayCLip, inverseProjection);
+            rayView.Z = -1;
+
+            Matrix4x4 inverseView;
+            Matrix4x4.Invert(CameraData.CreateViewMatrix(), out inverseView);
+            var rayWorld = Vector3.Transform(rayView, inverseView);
+            var start = Vector3.Zero;
+            start = Vector3.Transform(start, inverseView);
+            MeshData.instance.CastRay(Vector3.Normalize(rayWorld-start), start);
         }
     }
     public void OpenGLViewPort_PointerReleased(object sender, PointerReleasedEventArgs args)
@@ -44,6 +74,7 @@ public partial class _3DViewPort : UserControl
         var point = args.GetCurrentPoint(sender as Control);
         mmbWasPressed = point.Properties.IsMiddleButtonPressed;
         rmbWasPressed = point.Properties.IsRightButtonPressed;
+        lmbWasPressed = point.Properties.IsLeftButtonPressed;
     }
 
     public void OpenGLViewPort_PointerMoved(object sender, PointerEventArgs args)
@@ -52,7 +83,7 @@ public partial class _3DViewPort : UserControl
         if (mmbWasPressed)
         {
             var cur = args.GetPosition(sender as Control);
-            var dir = (mmbPoint - cur)/Bounds.Width *CameraData.instance.sensitivity;
+            var dir = (mmbPoint - cur)/Bounds.Width * CameraData.instance.sensitivity * 10;
             Vector3 right = Vector3.Normalize(Vector3.Cross(Vector3.UnitY, CameraData.instance.Forward));
             CameraData.instance.targetPos.Y -= (float)dir.Y;
             CameraData.instance.targetPos += right*(float)dir.X;
@@ -71,7 +102,7 @@ public partial class _3DViewPort : UserControl
     public void OpenGLViewPort_PointerWheelChanged(object sender, PointerWheelEventArgs args)
     {
         var change = args.Delta;
-        CameraData.instance.dist -= (float)change.Y;
+        CameraData.instance.dist -= (float)change.Y*5;
         CameraData.instance.dist = MathF.Max(CameraData.instance.dist, 0.01f);
     }
 }

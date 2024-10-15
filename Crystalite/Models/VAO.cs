@@ -19,7 +19,9 @@ namespace Crystalite.Models
         {
             vbo.Bind();
             GL.VertexAttribPointer(0,3,VertexAttribPointerType.Float,false,6*sizeof(float),0);
+            GL.VertexAttribPointer(1,3,VertexAttribPointerType.Float,false,6*sizeof(float),3*sizeof(float));
             GL.EnableVertexAttribArray(0);
+            GL.EnableVertexAttribArray(1);
             vbo.UnBind();
         }
         public void Bind()

@@ -15,7 +15,7 @@ namespace Crystalite.Utils
         public Vector3 eulerAngles;
         public Vector3 targetPos;
         public float dist = 10;
-        public float sensitivity = 17.0f;
+        public float sensitivity = 5.0f;
 
         public Vector3 Forward { get
             {
@@ -40,26 +40,23 @@ namespace Crystalite.Utils
             eulerAngles = new Vector3(25,-45,0);
         }
 
-        
-
-        public static Matrix4x4 CreateViewMatrix()
+        public static Vector3 GetCameraPos()
         {
-            // Convert degrees to radians
             float pitch = MathF.PI * instance.eulerAngles.X / 180.0f;
             float yaw = MathF.PI * instance.eulerAngles.Y / 180.0f;
             float roll = MathF.PI * instance.eulerAngles.Z / 180.0f;
 
-            // Calculate the camera's position based on distance and rotation angles
-            Vector3 cameraPosition = new Vector3(
+            return new Vector3(
                 instance.targetPos.X + instance.dist * MathF.Cos(pitch) * MathF.Sin(yaw),
                 instance.targetPos.Y + instance.dist * MathF.Sin(pitch),
                 instance.targetPos.Z + instance.dist * MathF.Cos(pitch) * MathF.Cos(yaw)
             );
+        }
 
+        public static Matrix4x4 CreateViewMatrix()
+        {
             // Create the view matrix
-            return Matrix4x4.CreateLookAt(cameraPosition, instance.targetPos, Vector3.UnitY);
-            //return new Matrix4(matrix.M11, matrix.M12, matrix.M13, matrix.M14, matrix.M21, matrix.M22, matrix.M23, matrix.M24, matrix.M31, matrix.M32, matrix.M33, matrix.M34, matrix.M41, matrix.M42, matrix.M43, matrix.M44);
-
+            return Matrix4x4.CreateLookAt(GetCameraPos(), instance.targetPos, Vector3.UnitY);
         }
     }
 }

@@ -5,9 +5,7 @@
 			 xmlns:cr="clr-namespace:Crystalite"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Crystalite._3DViewPort"
-			 PointerPressed="OpenGLViewPort_PointerPressed"
 			 PointerMoved="OpenGLViewPort_PointerMoved"
-			 PointerReleased="OpenGLViewPort_PointerReleased"
 			 PointerWheelChanged="OpenGLViewPort_PointerWheelChanged">
   <cr:OpenGLViewPort x:Name="GL" />
 </UserControl>

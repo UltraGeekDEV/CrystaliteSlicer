@@ -19,6 +19,8 @@ namespace Crystalite.Utils
                 {ShaderType.frameBuffer,new Shader("FrameBuffer.frag","FrameBuffer.vert")},
                 {ShaderType.antiAliasing,new Shader("FXAA.frag","FXAA.vert")},
                 {ShaderType.outline,new Shader("Outlining.frag","Outlining.vert")},
+                {ShaderType.buildPlate,new Shader("BuildPlate.frag","BuildPlate.vert")},
+                {ShaderType.shadow,new Shader("Shadow.frag","Shadow.vert")},
             };
         }
     }
@@ -28,6 +30,8 @@ namespace Crystalite.Utils
         unlit,
         frameBuffer,
         antiAliasing,
-        outline
+        outline,
+        buildPlate,
+        shadow
     }
 }

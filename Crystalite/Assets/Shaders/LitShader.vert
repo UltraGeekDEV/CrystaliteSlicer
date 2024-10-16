@@ -9,13 +9,17 @@ uniform mat4 rotation;
 uniform mat4 scale;
 uniform mat4 view;
 uniform mat4 projection;
+uniform mat4 sunProjection;
 uniform vec3 col;
 
 out vec3 Normal;
+out vec4 fragPosLight;
 out vec4 Col;
 
 void main(){
-    gl_Position =  projection * view * translation * (scale * rotation * vec4(aPos,1.0));
+    vec4 curPos = translation * (scale * rotation * vec4(aPos,1.0));
+    gl_Position =  projection * view * curPos;
+    fragPosLight = sunProjection * curPos;
     Normal = normalize(rotation * vec4(aNormal,1.0f)).xyz;
     Col = vec4(col,1);
 }

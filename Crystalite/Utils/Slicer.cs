@@ -28,6 +28,7 @@ namespace Crystalite.Utils
         {
             ConstructBuildPlate();
             Addhandles();
+            Sun.Setup();
             MeshData.instance = models;
             CameraData.instance.targetPos = new Vector3(Settings.PrintVolume.X * 0.05f, 0, -Settings.PrintVolume.Z * 0.05f);
         }
@@ -39,7 +40,7 @@ namespace Crystalite.Utils
             OpenGLUtils.QueueAction(() =>
             {
                 var importedMesh = new Mesh(mesh, ShaderType.lit);
-                importedMesh.col = new OpenTK.Mathematics.Vector3(0.9372f, 0.3254f, 0.0666f)*1.4f;
+                importedMesh.col = new OpenTK.Mathematics.Vector3(0.9372f, 0.3254f+0.1f, 0.0666f + 0.05f)*1.4f;
                 var pos = (importedMesh.upperRight - importedMesh.lowerLeft) * 0.5f;
                 pos += Settings.PrintVolume*new Vector3(0.05f,0,-0.05f);
                 pos.Y = -importedMesh.lowerLeft.Y;
@@ -62,7 +63,7 @@ namespace Crystalite.Utils
                 triangle.Scale(plateSize);
             }
             buildPlate = new Mesh(tris, ShaderType.lit);
-            buildPlate.col = new OpenTK.Mathematics.Vector3(0.2f, 0.2f, 0.2f);
+            buildPlate.col = new OpenTK.Mathematics.Vector3(0.55f, 0.5f, 0.45f);
             models.staticUI.Add(buildPlate);
 
             float xyzmarkerThickness = 2;

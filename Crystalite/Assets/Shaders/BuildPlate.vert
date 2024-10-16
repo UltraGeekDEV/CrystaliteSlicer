@@ -13,9 +13,11 @@ uniform vec3 col;
 
 out vec3 Normal;
 out vec4 Col;
+out vec3 Pos;
 
 void main(){
-    gl_Position =  projection * view * translation * (scale * rotation * vec4(aPos,1.0));
+    Pos = (translation * (scale * rotation * vec4(aPos,1.0))).xyz;
+    gl_Position =  projection * view * vec4(Pos,1.0f);
     Normal = normalize(rotation * vec4(aNormal,1.0f)).xyz;
     Col = vec4(col,1);
 }

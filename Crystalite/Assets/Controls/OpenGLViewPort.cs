@@ -34,16 +34,11 @@ namespace Crystalite
         private int outlineFBO;
         private int outlineFBT;
         private int outlineRBO;
-        private float[] fboTri = new float[]
-        {
-            1.0f,-1.0f,5.0f,    1.0f,0.0f,0.0f,
-            -1.0f,-1.0f,5.0f,   0.0f,0.0f,0.0f,
-            -1.0f,1.0f,5.0f,    0.0f,1.0f,0.0f,
-  
-            1.0f,1.0f,5.0f,     1.0f,1.0f,0.0f,
-            1.0f,-1.0f,5.0f,    1.0f,0.0f,0.0f,
-            -1.0f,1.0f,5.0f,    0.0f,1.0f,0.0f,
-        };
+
+        private int shadowMapFBO;
+        private int shadowMapFBT;
+        private int shadowMapWidth = 2048;
+        private int shadowMapHeight = 2048;
 
         Mesh postProcess;
 
@@ -141,6 +136,24 @@ namespace Crystalite
             outlineFBT = GL.GenTexture();
             outlineRBO = GL.GenRenderbuffer();
 
+            shadowMapFBO = GL.GenFramebuffer();
+            shadowMapFBT = GL.GenTexture();
+
+            GL.BindTexture(TextureTarget.Texture2D, shadowMapFBT);
+            GL.TexImage2D(TextureTarget2d.Texture2D,0,TextureComponentCount.DepthComponent32f,shadowMapWidth,shadowMapHeight,0,PixelFormat.DepthComponent,PixelType.Float,0);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToBorder);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToBorder);
+            //GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureBorderColor,new float[]{ 1.0f,1.0f,1.0f,1.0f});
+
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, shadowMapFBO);
+            GL.FramebufferTexture2D(FramebufferTarget.Framebuffer,FramebufferAttachment.DepthAttachment,TextureTarget2d.Texture2D,shadowMapFBT,0);
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+
+            Debug.WriteLine(GL.CheckFramebufferStatus(FramebufferTarget.Framebuffer));
+            CheckError("Create shadow Buffer");
+
             this.GetObservable(BoundsProperty).Subscribe((a)=> OpenGLUtils.QueueAction(()=>Resize(a)));
 
             postProcess = new Mesh(new List<Triangle>
@@ -173,11 +186,39 @@ namespace Crystalite
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
             GL.Enable(EnableCap.DepthTest);
             GL.Enable(EnableCap.CullFace);
-
             GL.CullFace(CullFaceMode.Back);
-            GL.Viewport(0, 0, (int)Bounds.Width, (int)Bounds.Height);
 
             CheckError("Render Early");
+
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, shadowMapFBO);
+            GL.Viewport(0, 0, shadowMapWidth, shadowMapHeight);
+            GL.Clear(ClearBufferMask.DepthBufferBit);
+            GL.Enable(EnableCap.DepthTest);
+            GL.Enable(EnableCap.CullFace);
+
+            GL.ColorMask(false, false, false, false);
+
+            OpenGLUtils.CheckError("Pre Shadow Render");
+            foreach (var modelGroup in MeshData.instance.objectPass)
+            {
+                foreach (var mesh in modelGroup)
+                {
+                    if (mesh.shader == Utils.ShaderType.lit)
+                    {
+                        Shaders.shaders[Utils.ShaderType.shadow].Activate();
+                        var sun = Sun.view * Sun.Projection;
+                        aGL.UniformMatrix4fv(GL.GetUniformLocation(Shaders.shaders[Utils.ShaderType.shadow].program, "sun"), 1, false, &sun);
+
+                        mesh.Draw(aGL, Utils.ShaderType.shadow);
+                    }
+                }
+            }
+
+            GL.ColorMask(true, true, true, true);
+
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, frameBufferObject);
+            GL.Viewport(0, 0, (int)Bounds.Width, (int)Bounds.Height);
+            GL.Enable(EnableCap.DepthTest);
 
             foreach (var layer in MeshData.instance.objectPass)
             {
@@ -187,7 +228,17 @@ namespace Crystalite
                     {
                         GL.Disable(EnableCap.DepthTest);
                     }
+                    if (mesh.shader == Utils.ShaderType.lit)
+                    {
+                        shaders[Utils.ShaderType.lit].Activate();
+                        GL.ActiveTexture(TextureUnit.Texture0);
+                        GL.BindTexture(TextureTarget.Texture2D, shadowMapFBT);
 
+                        GL.Uniform1(GL.GetUniformLocation(shaders[Utils.ShaderType.lit].program, "shadowMap"), 0);
+                        var sun = Sun.view * Sun.Projection;
+                        aGL.UniformMatrix4fv(GL.GetUniformLocation(shaders[Utils.ShaderType.lit].program, "sunProjection"), 1,false,&sun);
+                        GL.Uniform3(GL.GetUniformLocation(shaders[Utils.ShaderType.lit].program, "SunPos"),new OpenTK.Mathematics.Vector3(Sun.dir.X,Sun.dir.Y,Sun.dir.Z));
+                    }
                         mesh.Draw(aGL);
 
                         if (mesh.hasOutline)

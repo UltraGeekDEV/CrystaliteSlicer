@@ -16,6 +16,7 @@ namespace Crystalite.Utils
         public Vector3 targetPos;
         public float dist = 10;
         public float sensitivity = 5.0f;
+        public float aspectRatio;
 
         public Vector3 Forward { get
             {

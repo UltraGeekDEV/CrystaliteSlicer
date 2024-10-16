@@ -13,8 +13,13 @@ namespace CrystaliteSlicer.MeshImport
     {
         public List<Triangle> ImportMesh(Uri path)
         {
+            return ImportMesh(Uri.UnescapeDataString(path.AbsolutePath));
+        }
+
+        public List<Triangle> ImportMesh(string path)
+        {
             AssimpContext context = new AssimpContext();
-            var scene = context.ImportFile(Uri.UnescapeDataString(path.AbsolutePath), PostProcessSteps.Triangulate | PostProcessSteps.JoinIdenticalVertices);
+            var scene = context.ImportFile(path, PostProcessSteps.Triangulate | PostProcessSteps.JoinIdenticalVertices);
             return scene.Meshes.SelectMany(x =>
             {
                 var vertices = x.Vertices.Select(x => new Vector3(x.X, x.Y, x.Z)).ToArray();

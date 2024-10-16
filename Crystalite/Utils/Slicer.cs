@@ -15,6 +15,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace Crystalite.Utils
 {
@@ -26,6 +27,7 @@ namespace Crystalite.Utils
         public static void Setup()
         {
             ConstructBuildPlate();
+            Addhandles();
             MeshData.instance = models;
             CameraData.instance.targetPos = new Vector3(Settings.PrintVolume.X * 0.05f, 0, -Settings.PrintVolume.Z * 0.05f);
         }
@@ -37,12 +39,12 @@ namespace Crystalite.Utils
             OpenGLUtils.QueueAction(() =>
             {
                 var importedMesh = new Mesh(mesh, ShaderType.lit);
-                importedMesh.col = new OpenTK.Mathematics.Vector3(0.9372f, 0.3254f, 0.0666f);
+                importedMesh.col = new OpenTK.Mathematics.Vector3(0.9372f, 0.3254f, 0.0666f)*1.4f;
                 var pos = (importedMesh.upperRight - importedMesh.lowerLeft) * 0.5f;
                 pos += Settings.PrintVolume*new Vector3(0.05f,0,-0.05f);
                 pos.Y = -importedMesh.lowerLeft.Y;
-                importedMesh.transform = Matrix4x4.CreateTranslation(pos);
-                models.meshes.Add(importedMesh);
+                importedMesh.translation = Matrix4x4.CreateTranslation(pos);
+                models.models.Add(importedMesh);
             });
 
         }
@@ -61,8 +63,7 @@ namespace Crystalite.Utils
             }
             buildPlate = new Mesh(tris, ShaderType.lit);
             buildPlate.col = new OpenTK.Mathematics.Vector3(0.2f, 0.2f, 0.2f);
-            buildPlate.clickable = false;
-            models.meshes.Add(buildPlate);
+            models.staticUI.Add(buildPlate);
 
             float xyzmarkerThickness = 2;
             var scale = new Vector3(5 * plateThickness, xyzmarkerThickness, -xyzmarkerThickness);
@@ -74,9 +75,8 @@ namespace Crystalite.Utils
             }
 
             var xMarker = new Mesh(tris, ShaderType.unlit);
-            xMarker.col = new OpenTK.Mathematics.Vector3(1,0,0);
-            xMarker.clickable = false;
-            models.meshes.Add(xMarker);
+            xMarker.col = new OpenTK.Mathematics.Vector3(1,0.3f, 0.3f);
+            models.staticUI.Add(xMarker);
 
             scale = new Vector3(xyzmarkerThickness, 5 * plateThickness, -xyzmarkerThickness);
             tris = GetUnitCube();
@@ -87,9 +87,8 @@ namespace Crystalite.Utils
             }
 
             var yMarker = new Mesh(tris, ShaderType.unlit);
-            yMarker.col = new OpenTK.Mathematics.Vector3(0, 1, 0);
-            yMarker.clickable = false;
-            models.meshes.Add(yMarker);
+            yMarker.col = new OpenTK.Mathematics.Vector3(0.3f, 1, 0.3f);
+            models.staticUI.Add(yMarker);
 
             scale = new Vector3(xyzmarkerThickness,  xyzmarkerThickness, -5*plateThickness-xyzmarkerThickness);
             tris = GetUnitCube();
@@ -100,9 +99,8 @@ namespace Crystalite.Utils
             }
 
             var zMarker = new Mesh(tris, ShaderType.unlit);
-            zMarker.col = new OpenTK.Mathematics.Vector3(0, 0, 1);
-            zMarker.clickable = false;
-            models.meshes.Add(zMarker);
+            zMarker.col = new OpenTK.Mathematics.Vector3(0.3f, 0.3f, 1);
+            models.staticUI.Add(zMarker);
 
             scale = new Vector3(xyzmarkerThickness, xyzmarkerThickness, -xyzmarkerThickness);
             tris = GetUnitCube();
@@ -114,9 +112,21 @@ namespace Crystalite.Utils
 
             var cornerMarker = new Mesh(tris, ShaderType.unlit);
             cornerMarker.col = new OpenTK.Mathematics.Vector3(1, 1, 1);
-            cornerMarker.clickable = false;
-            models.meshes.Add(cornerMarker);
+            models.staticUI.Add(cornerMarker);
 
+        }
+        private static void Addhandles()
+        {
+            var xHandle = new AxisMesh(new Vector3(1.0f, 0.0f, 0.0f),
+                new MeshImporter().ImportMesh(Path.Combine(AppContext.BaseDirectory, "Assets", "Models", "Arrow.stl")).Select(x => { x.Offset(new Vector3(0.0f, 1.0f, 0.0f)); return x; })
+                ,ShaderType.unlit,0.1f,true);
+            xHandle.rotation = Matrix4x4.CreateFromAxisAngle(new Vector3(0.0f, 1.0f, 0.0f),-float.Pi*0.5f);
+            models.translationHandles.Add(xHandle);
+
+            var yHandle = new AxisMesh(new Vector3(0.0f, 0.0f, 1.0f),
+                new MeshImporter().ImportMesh(Path.Combine(AppContext.BaseDirectory, "Assets", "Models", "Arrow.stl")).Select(x => { x.Offset(new Vector3(0.0f, 1.0f, 0.0f)); return x; })
+                , ShaderType.unlit, 0.1f, true);
+            models.translationHandles.Add(yHandle);
         }
         public static List<Triangle> GetUnitCube()
         {

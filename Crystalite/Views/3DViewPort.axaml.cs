@@ -5,9 +5,11 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Remote.Protocol.Input;
 using Avalonia.VisualTree;
 using Crystalite.Utils;
+using OpenTK.Windowing.Common.Input;
 using System;
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.InteropServices;
 
 namespace Crystalite;
 
@@ -20,6 +22,31 @@ public partial class _3DViewPort : UserControl
     private Point rmbPoint;
 
     private bool lmbWasPressed = false;
+    private Point lmbPoint;
+
+    [DllImport("user32.dll")]
+    private static extern bool SetCursorPos(int X, int Y);
+
+    private struct POINT
+    {
+        public int x;
+        public int y;
+    }
+
+    POINT curPoint;
+
+    [DllImport("user32.dll")]
+    private static extern bool GetCursorPos(out POINT point);
+
+    private void SetPointerPosition(int x, int y)
+    {
+        SetCursorPos(x, y);
+    }
+
+    private void GetPointerPosition()
+    {
+        GetCursorPos(out curPoint);
+    }
 
     public _3DViewPort()
     {
@@ -44,7 +71,9 @@ public partial class _3DViewPort : UserControl
         }
         if (point.Properties.IsLeftButtonPressed && !lmbWasPressed)
         {
+            GetPointerPosition();
             lmbWasPressed = true;
+            lmbPoint = point.Position;
             var view = this.FindDescendantOfType<OpenGLViewPort>();
 
             var width = view.Bounds.Width;
@@ -74,7 +103,12 @@ public partial class _3DViewPort : UserControl
         var point = args.GetCurrentPoint(sender as Control);
         mmbWasPressed = point.Properties.IsMiddleButtonPressed;
         rmbWasPressed = point.Properties.IsRightButtonPressed;
-        lmbWasPressed = point.Properties.IsLeftButtonPressed;
+        if (lmbWasPressed && !point.Properties.IsLeftButtonPressed)
+        {
+            lmbWasPressed = false;
+            Cursor = Cursor.Default;
+            MeshData.instance.ReleaseAxis();
+        }
     }
 
     public void OpenGLViewPort_PointerMoved(object sender, PointerEventArgs args)
@@ -97,6 +131,27 @@ public partial class _3DViewPort : UserControl
             CameraData.instance.eulerAngles.X -= (float)dir.Y *72;
             CameraData.instance.eulerAngles.X = Math.Clamp(CameraData.instance.eulerAngles.X, -85, 85);
             rmbPoint = cur;
+        }
+        if (lmbWasPressed && MeshData.instance.activeAxis != null)
+        {
+            var view = this.FindDescendantOfType<OpenGLViewPort>();
+
+            var width = view.Bounds.Width;
+            var height = view.Bounds.Height;
+
+            var perspective = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)(width / height), 0.01f, 1000f);
+
+            var cur = args.GetPosition(sender as Control);
+            var dir = (lmbPoint-cur);
+            var dirVec = new Vector3((float)-dir.X / (float)width, (float)dir.Y / (float)height, 0)*20;
+            var zero = Vector3.Transform(Vector3.Transform(Vector3.Zero, perspective),  CameraData.CreateViewMatrix());
+            var axisDir = Vector3.Normalize(Vector3.Transform(Vector3.Transform(MeshData.instance.activeAxis.axis, perspective),  CameraData.CreateViewMatrix())-zero);
+
+            MeshData.instance.selected.translation.Translation += MeshData.instance.activeAxis.axis*Vector3.Dot(axisDir,dirVec)*new Vector3(1.0f,1.0f,-1.0f);
+            MeshData.instance.UpdateTranslationHandles();
+            Cursor = new Cursor(StandardCursorType.None);
+            SetCursorPos(curPoint.x, curPoint.y);
+            
         }
     }
     public void OpenGLViewPort_PointerWheelChanged(object sender, PointerWheelEventArgs args)

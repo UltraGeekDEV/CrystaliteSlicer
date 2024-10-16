@@ -30,6 +30,10 @@ namespace Crystalite
         private int frameBufferObject;
         private int frameBufferTexture;
         private int renderBufferObject;
+
+        private int outlineFBO;
+        private int outlineFBT;
+        private int outlineRBO;
         private float[] fboTri = new float[]
         {
             1.0f,-1.0f,5.0f,    1.0f,0.0f,0.0f,
@@ -77,9 +81,32 @@ namespace Crystalite
             
             CheckError("RB resize");
 
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, outlineFBO);
+
+            //Set texture info and resize it
+            GL.BindTexture(TextureTarget.Texture2D, outlineFBT);
+            GL.TexImage2D(TextureTarget2d.Texture2D, 0, TextureComponentCount.Rgb, (int)size.Width, (int)size.Height, 0, PixelFormat.Rgb, PixelType.UnsignedByte, 0);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
+            GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget2d.Texture2D, outlineFBT, 0);
+
+            CheckError("FBT2 resize");
+
+            GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, outlineRBO);
+            GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferInternalFormat.Depth24Stencil8, (int)size.Width, (int)size.Height);
+            GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthStencilAttachment, RenderbufferTarget.Renderbuffer, outlineRBO);
+
+            CheckError("RB2 resize");
+
             shaders[Utils.ShaderType.frameBuffer].Activate();
+
             GL.Uniform1(GL.GetUniformLocation(shaders[Utils.ShaderType.frameBuffer].program, "screenTexture"), 0);
+            GL.Uniform1(GL.GetUniformLocation(shaders[Utils.ShaderType.frameBuffer].program, "outlineTexture"), 1);
+
             CheckError("Set texture");
+            CameraData.instance.aspectRatio = (float)(size.Width/size.Height);
         }
         protected override unsafe void OnOpenGlInit(GlInterface aGl)
         {
@@ -107,10 +134,12 @@ namespace Crystalite
             },0);
 
             frameBufferObject = GL.GenFramebuffer();
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, frameBufferObject);
-
             frameBufferTexture = GL.GenTexture();
             renderBufferObject = GL.GenRenderbuffer();
+
+            outlineFBO = GL.GenFramebuffer();
+            outlineFBT = GL.GenTexture();
+            outlineRBO = GL.GenRenderbuffer();
 
             this.GetObservable(BoundsProperty).Subscribe((a)=> OpenGLUtils.QueueAction(()=>Resize(a)));
 
@@ -134,49 +163,49 @@ namespace Crystalite
         {
             Dispatcher.UIThread.Post(RequestNextFrameRendering, DispatcherPriority.Render);
             OpenGLUtils.ExecuteSyncQueue();
-            CheckError("Render Early1");
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, outlineFBO);
+            GL.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, frameBufferObject);
+
+            CheckError("Render Early1");
+            GL.ClearColor(0.1f, 0.15f, 0.2f, 1.0f);
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
             GL.Enable(EnableCap.DepthTest);
             GL.Enable(EnableCap.CullFace);
-            GL.StencilOp(StencilOp.Keep, StencilOp.Keep, StencilOp.Replace);
-            GL.ClearColor(0.091f, 0.09f, 0.1f, 1.0f);
-            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
-            
 
             GL.CullFace(CullFaceMode.Back);
             GL.Viewport(0, 0, (int)Bounds.Width, (int)Bounds.Height);
 
             CheckError("Render Early");
 
-            GL.StencilFunc(StencilFunction.Always, 1, 0xFF);
-            GL.StencilMask(0xFF);
-
-            foreach (var mesh in MeshData.instance.meshes)
+            foreach (var layer in MeshData.instance.objectPass)
             {
-                var shader = Shaders.shaders[mesh.shader];
-                shader.Activate();
-                mesh.vao.Bind();
-
-                var projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)(Bounds.Width / Bounds.Height), 0.01f, 1000f);
-                var view = CameraData.CreateViewMatrix();
-                var viewLoc = GL.GetUniformLocation(shader.program, "view");
-                var modelLoc = GL.GetUniformLocation(shader.program, "model");
-                var projectionLoc = GL.GetUniformLocation(shader.program, "projection");
-                var col = GL.GetUniformLocation(shader.program, "col");
-                CheckError("Render Get locs");
-
-                aGL.UniformMatrix4fv(viewLoc, 1, false, &view);
-                aGL.UniformMatrix4fv(projectionLoc, 1, false, &projection);
-                CheckError("Render Set Attribs");
-
-                GL.Uniform3(col, ref mesh.col);
-                fixed (Matrix4x4* model = &mesh.transform)
+                foreach (var mesh in layer)
                 {
-                    aGL.UniformMatrix4fv(modelLoc, 1, false, model);
+                    if (!mesh.depthTest)
+                    {
+                        GL.Disable(EnableCap.DepthTest);
+                    }
+
+                        mesh.Draw(aGL);
+
+                        if (mesh.hasOutline)
+                        {
+                            GL.BindFramebuffer(FramebufferTarget.Framebuffer, outlineFBO);
+                            GL.Disable(EnableCap.DepthTest);
+
+                            mesh.Draw(aGL, Utils.ShaderType.outline);
+
+                            GL.Enable(EnableCap.DepthTest);
+                            GL.BindFramebuffer(FramebufferTarget.Framebuffer, frameBufferObject);
+                        }
+
+                    if (!mesh.depthTest)
+                    {
+                        GL.Enable(EnableCap.DepthTest);
+                    }
                 }
-                GL.DrawArrays(PrimitiveType.Triangles, 0, mesh.vertices.Count * 6);
-                CheckError("Render");
-                mesh.vao.Unbind(); 
             }
 
             GL.Disable(EnableCap.DepthTest);
@@ -185,11 +214,30 @@ namespace Crystalite
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, fb);
             var postProcessShader = Shaders.shaders[Utils.ShaderType.frameBuffer];
             postProcessShader.Activate();
+            GL.ActiveTexture(TextureUnit.Texture0);
             GL.BindTexture(TextureTarget.Texture2D, frameBufferTexture);
+
+            GL.ActiveTexture(TextureUnit.Texture1);
+            GL.BindTexture(TextureTarget.Texture2D, outlineFBT);
+
             GL.Uniform1(GL.GetUniformLocation(postProcessShader.program, "width"), (float)Bounds.Width);
             GL.Uniform1(GL.GetUniformLocation(postProcessShader.program, "height"), (float)Bounds.Height);
             postProcess.vao.Bind();
             GL.DrawArrays(PrimitiveType.Triangles, 0, postProcess.vertices.Count * 6);
+
+            GL.Enable(EnableCap.DepthTest);
+            GL.Enable(EnableCap.CullFace);
+
+            GL.Clear(ClearBufferMask.DepthBufferBit);
+            foreach ( var meshGroup in MeshData.instance.UIPass)
+            {
+                foreach (var mesh in meshGroup)
+                {
+                    mesh.Draw(aGL);
+                }
+            }
+            GL.Disable(EnableCap.DepthTest);
+            GL.Disable(EnableCap.CullFace);
 
             GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fb);
             GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, frameBufferObject);

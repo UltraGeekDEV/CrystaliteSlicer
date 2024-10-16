@@ -1,5 +1,7 @@
-﻿using Crystalite.Utils;
+﻿using Avalonia.OpenGL;
+using Crystalite.Utils;
 using Models;
+using OpenTK.Graphics.ES30;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,9 +18,14 @@ namespace Crystalite.Models
         public List<Vector3> normals = new List<Vector3>();
         public Vector3 lowerLeft;
         public Vector3 upperRight;
-        public Matrix4x4 transform;
-        public ShaderType shader;
-        public bool clickable = true;
+        public Vector3 com;
+
+        public Matrix4x4 translation;
+        public Matrix4x4 rotation;
+        public Matrix4x4 scale;
+
+        public Utils.ShaderType shader;
+        public bool depthTest = true;
         public bool hasOutline = false;
 
         public VBO vbo;
@@ -27,7 +34,7 @@ namespace Crystalite.Models
 
         public Mesh() { }
 
-        public Mesh(IEnumerable<Triangle> triangles,ShaderType shader,float scale = 0.1f,bool reorient = true)
+        public Mesh(IEnumerable<Triangle> triangles,Utils.ShaderType shader,float scale = 0.1f,bool reorient = true)
         {
             lowerLeft = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
             upperRight = new Vector3(float.MinValue, float.MinValue, float.MinValue);
@@ -40,15 +47,17 @@ namespace Crystalite.Models
                 this.tris = triangles;
             }
 
-            transform = Matrix4x4.Identity;
+            translation = Matrix4x4.Identity;
+            rotation = Matrix4x4.Identity;
+            this.scale = Matrix4x4.Identity;
             foreach (Triangle triangle in tris)
             {
                 var a = triangle.a;
                 var b = triangle.b;
                 var c = triangle.c;
-
+                com += a + b + c;
                 lowerLeft = Min(lowerLeft, Min(a, Min(b, c)));
-                upperRight = Max(lowerLeft, Max(a, Max(b, c)));
+                upperRight = Max(upperRight, Max(a, Max(b, c)));
 
                 vertices.Add(a);
                 vertices.Add(b);
@@ -56,6 +65,7 @@ namespace Crystalite.Models
 
                 normals.Add(Vector3.Normalize(Vector3.Cross(b - a, c - a)));
             }
+            com /= vertices.Count;
             CalculateVAOData();
             this.shader = shader;
         }
@@ -98,11 +108,7 @@ namespace Crystalite.Models
 
         public (float,Mesh) RayCast(Vector3 dir,Vector3 start)
         {
-            if (!clickable)
-            {
-                return (-1.0f, this);
-            }
-            var hits = tris.Select(x=>new Triangle(Vector3.Transform(x.a,transform), Vector3.Transform(x.b, transform), Vector3.Transform(x.c, transform)))
+            var hits = GetWorldspacetriangles()
                 .Select(x =>
             {
                 var norm = Vector3.Normalize(Vector3.Cross(x.b - x.a, x.c - x.a));
@@ -152,6 +158,62 @@ namespace Crystalite.Models
             {
                 return (-1.0f, this);
             }
+        }
+
+        public unsafe void Draw(GlInterface aGL)
+        {
+            var Meshshader = Shaders.shaders[shader];
+            Meshshader.Activate();
+            vao.Bind();
+
+            var projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, CameraData.instance.aspectRatio, 0.01f, 1000f);
+            var view = CameraData.CreateViewMatrix();
+
+            var viewLoc = GL.GetUniformLocation(Meshshader.program, "view");
+            var modelLoc = GL.GetUniformLocation(Meshshader.program, "translation");
+            var projectionLoc = GL.GetUniformLocation(Meshshader.program, "projection");
+            var col = GL.GetUniformLocation(Meshshader.program, "col");
+            var scale = GL.GetUniformLocation(Meshshader.program, "scale");
+            var rotation = GL.GetUniformLocation(Meshshader.program, "rotation");
+
+            OpenGLUtils.CheckError("Render Get locs");
+            var locMat = this.translation;
+            var scaleMat = this.scale;
+            var rotMat = this.rotation;
+
+            aGL.UniformMatrix4fv(viewLoc, 1, false, &view);
+            aGL.UniformMatrix4fv(projectionLoc, 1, false, &projection);
+            aGL.UniformMatrix4fv(modelLoc, 1, false, &locMat);
+            aGL.UniformMatrix4fv(scale, 1, false, &scaleMat);
+            aGL.UniformMatrix4fv(rotation, 1, false, &rotMat);
+            OpenGLUtils.CheckError("Render Set Attribs");
+
+            GL.Uniform3(col, ref this.col);
+            GL.DrawArrays(PrimitiveType.Triangles, 0, vertices.Count * 6);
+            OpenGLUtils.CheckError("Render");
+            vao.Unbind();
+        }
+        public void Draw(GlInterface aGL,Utils.ShaderType shader)
+        {
+            var originalShader = this.shader;
+            this.shader = shader;
+            Draw(aGL);
+            this.shader = originalShader;
+        }
+        public void Draw(GlInterface aGL, Utils.ShaderType shader,OpenTK.Mathematics.Vector3 col)
+        {
+            var originalColor = this.col;
+            this.col = col;
+            Draw(aGL,shader);
+            this.col = originalColor;
+        }
+        public List<Triangle> GetWorldspacetriangles()
+        {
+            return tris.Select(x => new Triangle(
+                Vector3.Transform(Vector3.Transform(Vector3.Transform(x.a,rotation),scale), translation),
+                Vector3.Transform(Vector3.Transform(Vector3.Transform(x.b, rotation), scale), translation),
+                Vector3.Transform(Vector3.Transform(Vector3.Transform(x.c, rotation), scale), translation)
+                )).ToList();
         }
     }
 }

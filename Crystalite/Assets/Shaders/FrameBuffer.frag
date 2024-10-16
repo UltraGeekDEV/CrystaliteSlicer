@@ -6,6 +6,7 @@ in vec2 uv;
 out vec4 FragColor;
 
 uniform sampler2D screenTexture;
+uniform sampler2D outlineTexture;
 
 uniform float width;
 uniform float height;
@@ -35,18 +36,14 @@ void main(){
     vec4 colX = vec4(0);
     vec4 colY = vec4(0);
     for(int i = 0;i<9;i++){
-        colX += texture(screenTexture,uv+(offsets[i]*pixel))*kernelX[i];
-        colY += texture(screenTexture,uv+(offsets[i]*pixel))*kernelY[i];
+        colX += texture(outlineTexture,uv+(offsets[i]*pixel))*kernelX[i];
+        colY += texture(outlineTexture,uv+(offsets[i]*pixel))*kernelY[i];
     }
 
-    vec4 retCol;
-    if(length(colX)+length(colY) > 0.5f){
-        retCol = vec4(1);
+    if(length(colX)+length(colY) > 2.0f){
+        FragColor = vec4(1.0f,1.0f,0.8f,1.0f);
     }
     else{
-        retCol = vec4(0);
+        FragColor = texture(screenTexture,uv);
     }
-
-
-    FragColor = texture(screenTexture,uv);
 }

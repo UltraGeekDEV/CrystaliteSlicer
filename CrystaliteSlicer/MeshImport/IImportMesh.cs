@@ -11,5 +11,6 @@ namespace CrystaliteSlicer.MeshImport
     public interface IImportMesh
     {
         public List<Triangle> ImportMesh(Uri path);
+        public List<Triangle> ImportMesh(string path);
     }
 }

@@ -11,6 +11,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AvaloniaResource Remove="Assets\Models\Arrow.stl" />
+    <AvaloniaResource Remove="Assets\Shaders\BuildPlate.frag" />
+    <AvaloniaResource Remove="Assets\Shaders\BuildPlate.vert" />
     <AvaloniaResource Remove="Assets\Shaders\FrameBuffer.frag" />
     <AvaloniaResource Remove="Assets\Shaders\FrameBuffer.vert" />
     <AvaloniaResource Remove="Assets\Shaders\FXAA.frag" />
@@ -54,6 +57,15 @@
     <AvaloniaResource Update="Assets\Brushes.axaml">
       <SubType>Designer</SubType>
     </AvaloniaResource>
+    <None Update="Assets\Shaders\BuildPlate.frag">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Shaders\BuildPlate.vert">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Models\Arrow.stl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Assets\Shaders\Outlining.frag">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

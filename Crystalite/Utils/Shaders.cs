@@ -21,6 +21,7 @@ namespace Crystalite.Utils
                 {ShaderType.outline,new Shader("Outlining.frag","Outlining.vert")},
                 {ShaderType.buildPlate,new Shader("BuildPlate.frag","BuildPlate.vert")},
                 {ShaderType.shadow,new Shader("Shadow.frag","Shadow.vert")},
+                {ShaderType.normal,new Shader("NormDrawer.frag","NormDrawer.vert")},
             };
         }
     }
@@ -32,6 +33,7 @@ namespace Crystalite.Utils
         antiAliasing,
         outline,
         buildPlate,
-        shadow
+        shadow,
+        normal
     }
 }

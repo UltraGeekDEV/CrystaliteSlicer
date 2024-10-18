@@ -166,5 +166,16 @@ namespace Crystalite.Utils
             };
             return tris;
         }
+
+        internal static void Slice()
+        {
+            var meshes = MeshData.instance.models.SelectMany(x => x.GetPrintspacetriangles().Select(y => Reorient(y)));
+            IVoxelCollection voxels = new FlatVoxelArray();
+        }
+
+        private static Triangle Reorient(Triangle triangle)
+        {
+            return new Triangle(Mesh.Deorient(triangle.a), Mesh.Deorient(triangle.b), Mesh.Deorient(triangle.c));
+        }
     }
 }

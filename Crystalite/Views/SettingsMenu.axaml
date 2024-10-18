@@ -3,14 +3,56 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              x:Class="Crystalite.SettingsMenu"
-			 mc:Ignorable="d" d:DesignWidth="340">
+			 mc:Ignorable="d" d:DesignWidth="350">
+	<UserControl.Styles>
+		<Style Selector="StackPanel">
+			<Setter Property="HorizontalAlignment" Value="Stretch"/>
+		</Style>
+		<Style Selector="Expander">
+			<Setter Property="Background" Value="{StaticResource Background80}"/>
+		</Style>
+		
+		<Style Selector="Expander:expanded /template/ Border#ExpanderContent">
+			<Setter Property="Padding" Value="40 0 0 10"/>
+			<Setter Property="BorderThickness" Value="0 0 0 0"/>
+			<Setter Property="BorderBrush" Value="Transparent"/>
+		</Style>
+		<Style Selector="Expander ToggleButton">
+			<Setter Property="Padding" Value="20 0 0 0"/>
+			<Setter Property="Margin" Value="0"/>
+			<Setter Property="Background" Value="{StaticResource Background}"/>
+			<Setter Property="CornerRadius" Value="0"/>
+		</Style>
+		<Style Selector="Expander ToggleButton Border:pointerover">
+			<Setter Property="Background" Value="{StaticResource Background}"/>
+			<Setter Property="BorderThickness" Value="0 0 0 4"/>
+			<Setter Property="CornerRadius" Value="0"/>
+			<Setter Property="BorderBrush" Value="{StaticResource Background80}"/>
+		</Style>
+		<Style Selector="Expander:expanded ToggleButton Border">
+			<Setter Property="Background" Value="{StaticResource Background}"/>
+			<Setter Property="BorderThickness" Value="0 0 0 4"/>
+			<Setter Property="CornerRadius" Value="0"/>
+			<Setter Property="BorderBrush" Value="{StaticResource Background80}"/>
+		</Style>
+		<Style Selector="Expander ToggleButton:pointerover Border#ExpandCollapseChevronBorder">
+			<Setter Property="Background" Value="{StaticResource Background80}"/>
+			<Setter Property="BorderThickness" Value="0 0 0 2"/>
+			<Setter Property="CornerRadius" Value="0"/>
+			<Setter Property="BorderBrush" Value="{StaticResource Text90}"/>
+		</Style>
+		<Style Selector="Expander ToggleButton:pointerover Border#ToggleButtonBackground">
+			<Setter Property="Background" Value="{StaticResource Background80}"/>
+		</Style>
+	</UserControl.Styles>
 	<ScrollViewer>
 		<StackPanel Background="Transparent">
 			<Expander Header="Material Settings" IsExpanded="False" ExpandDirection="Down">
 				<Grid>
 					<Grid.ColumnDefinitions>
-						<ColumnDefinition Width="3*"/>
-						<ColumnDefinition Width="1*" MinWidth="60"/>
+						<ColumnDefinition Width="2*"/>
+						<ColumnDefinition Width="1*"/>
+						<ColumnDefinition Width="10"/>
 					</Grid.ColumnDefinitions>
 					<Grid.RowDefinitions>
 						<RowDefinition/>
@@ -32,11 +74,13 @@
 					<TextBlock Grid.Column="1" Grid.Row="3" Text="%" Classes="unit" />
 				</Grid>
 			</Expander>
-			<Expander Header="Printer Settings" IsExpanded="True">
+			<Expander Header="Printer Settings" IsExpanded="False">
 				<Grid>
 					<Grid.ColumnDefinitions>
 						<ColumnDefinition Width="2*"/>
-						<ColumnDefinition Width="113"/>
+						<ColumnDefinition Width="1*"/>
+						<ColumnDefinition Width="10"/>
+
 					</Grid.ColumnDefinitions>
 					<Grid.RowDefinitions>
 						<RowDefinition/>
@@ -44,30 +88,29 @@
 						<RowDefinition/>
 						<RowDefinition/>
 						<RowDefinition/>
+						<RowDefinition/>
+						<RowDefinition/>
 					</Grid.RowDefinitions>
-					<StackPanel Grid.ColumnSpan="2" Orientation="Vertical">
-						<TextBlock>Build Volume</TextBlock>
-						<Grid Margin="100,0,0,0" ColumnDefinitions="1*,113" RowDefinitions="1*,1*,1*">
-							<TextBlock Grid.Column="0" Grid.Row="0">X:</TextBlock>
-							<TextBox Grid.Column="1" Grid.Row="0" Text="{Binding PrintVolumeX,Mode=TwoWay}" ></TextBox>
-							<TextBlock Grid.Column="1" Grid.Row="0" Text="mm" Classes="unit" />
-							<TextBlock Grid.Column="0" Grid.Row="1">Y:</TextBlock>
-							<TextBox Grid.Column="1" Grid.Row="1" Text="{Binding PrintVolumeY,Mode=TwoWay}" ></TextBox>
-							<TextBlock Grid.Column="1" Grid.Row="1" Text="mm" Classes="unit" />
-							<TextBlock Grid.Column="0" Grid.Row="2">Z:</TextBlock>
-							<TextBox Grid.Column="1" Grid.Row="2" Text="{Binding PrintVolumeZ,Mode=TwoWay}" ></TextBox>
-							<TextBlock Grid.Column="1" Grid.Row="2" Text="mm" Classes="unit" />
-						</Grid>
-					</StackPanel>
-					<TextBlock Grid.Column="0" Grid.Row="1">Nozzle Diameter</TextBlock>
-					<TextBox Grid.Column="1" Grid.Row="1" Text="{Binding NozzleDiameter,Mode=TwoWay}" ></TextBox>
+					<TextBlock  Margin="0,0,0,0" Grid.Column="0" Grid.Row="0">Build Volume:</TextBlock>
+					<TextBlock  Margin="100,0,0,0" Grid.Column="0" Grid.Row="1">X:</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="1" Text="{Binding PrintVolumeX,Mode=TwoWay}" ></TextBox>
 					<TextBlock Grid.Column="1" Grid.Row="1" Text="mm" Classes="unit" />
-					<TextBlock Grid.Column="0" Grid.Row="2">Max Slope</TextBlock>
-					<TextBox Grid.Column="1" Grid.Row="2" Text="{Binding MaxSlope,Mode=TwoWay}"></TextBox>
-					<TextBlock Grid.Column="1" Grid.Row="2" Text="°" Classes="unit" />
-					<TextBlock Grid.Column="0" Grid.Row="3">Max Layer Height</TextBlock>
-					<TextBox Grid.Column="1" Grid.Row="3" Text="{Binding MaxLayerHeight,Mode=TwoWay}"></TextBox>
+					<TextBlock Margin="100,0,0,0" Grid.Column="0" Grid.Row="2">Y:</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="2" Text="{Binding PrintVolumeY,Mode=TwoWay}" ></TextBox>
+					<TextBlock Grid.Column="1" Grid.Row="2" Text="mm" Classes="unit" />
+					<TextBlock  Margin="100,0,0,0" Grid.Column="0" Grid.Row="3">Z:</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="3" Text="{Binding PrintVolumeZ,Mode=TwoWay}" ></TextBox>
 					<TextBlock Grid.Column="1" Grid.Row="3" Text="mm" Classes="unit" />
+					
+					<TextBlock Grid.Column="0" Grid.Row="4">Nozzle Diameter</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="4" Text="{Binding NozzleDiameter,Mode=TwoWay}" ></TextBox>
+					<TextBlock Grid.Column="1" Grid.Row="4" Text="mm" Classes="unit" />
+					<TextBlock Grid.Column="0" Grid.Row="5">Max Slope</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="5" Text="{Binding MaxSlope,Mode=TwoWay}"></TextBox>
+					<TextBlock Grid.Column="1" Grid.Row="5" Text="°" Classes="unit" />
+					<TextBlock Grid.Column="0" Grid.Row="6">Max Layer Height</TextBlock>
+					<TextBox Grid.Column="1" Grid.Row="6" Text="{Binding MaxLayerHeight,Mode=TwoWay}"></TextBox>
+					<TextBlock Grid.Column="1" Grid.Row="6" Text="mm" Classes="unit" />
 				</Grid>
 			</Expander>
 			<Expander Header="Speed Settings" IsExpanded="False">
@@ -75,6 +118,7 @@
 					<Grid.ColumnDefinitions>
 						<ColumnDefinition Width="2*"/>
 						<ColumnDefinition Width="1*"/>
+						<ColumnDefinition Width="10"/>
 					</Grid.ColumnDefinitions>
 					<Grid.RowDefinitions>
 						<RowDefinition/>
@@ -101,6 +145,7 @@
 					<Grid.ColumnDefinitions>
 						<ColumnDefinition Width="2*"/>
 						<ColumnDefinition Width="1*"/>
+						<ColumnDefinition Width="10"/>
 					</Grid.ColumnDefinitions>
 					<Grid.RowDefinitions>
 						<RowDefinition/>

@@ -21,11 +21,14 @@ namespace Crystalite.Utils
         public List<Mesh> translationHandles = new List<Mesh>();
 
         public List<List<Mesh>> objectPass = new List<List<Mesh>>();
+        public List<List<Mesh>> goochPass = new List<List<Mesh>>();
         public List<List<Mesh>> UIPass = new List<List<Mesh>>();
         public MeshData()
         {
             objectPass.Add(staticUI);
             objectPass.Add(models);
+
+            goochPass.Add(models);
         }
         public void ReleaseAxis()
         {

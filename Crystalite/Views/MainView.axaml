@@ -12,40 +12,63 @@
 			<RowDefinition Height="50"/>
 			<RowDefinition Height="1*"/>
 		</Grid.RowDefinitions>
-		<Grid Grid.Row="1" >
+		<Grid Grid.Row="1">
 			<cr:_3DViewPort Grid.RowSpan="2" Grid.ColumnSpan="2" Background="{StaticResource Background}"/>
 			<Grid.ColumnDefinitions>
 				<ColumnDefinition Width="10*"/>
-				<ColumnDefinition Width="340"/>
+				<ColumnDefinition Width="350"/>
 			</Grid.ColumnDefinitions>
 			<Grid.RowDefinitions>
 				<RowDefinition Height="1*"/>
 				<RowDefinition Height="60"/>
 			</Grid.RowDefinitions>
-			<Button Grid.Row="1" VerticalAlignment="Center" Margin="20 0 0 0" Width="100" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">Slice</Button>
+			<Button Grid.Row="1" VerticalAlignment="Center" Margin="20 0 0 0" Width="100" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Click="Button_Click">Slice</Button>
 			<Button Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0 0 20 0" Width="150" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">Save Gcode</Button>
-			<Expander Grid.Column="1" VerticalAlignment="Top" Header="Settings" Padding="0" IsExpanded="False" Classes="SettingsToggle">
-				<Expander.Styles>
-					<Style Selector="Expander.SettingsToggle ToggleButton">
-						<Setter Property="BorderThickness" Value="0 0 0 0"/>
-					</Style>
-					<Style Selector="Expander:not(:expanded).SettingsToggle ToggleButton">
-						<Setter Property="BorderThickness" Value="0 0 0 2"/>
-						<Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
-					</Style>
-					<Style Selector="Expander:expanded.SettingsToggle /template/ Border#ExpanderContent">
-						<Setter Property="BorderThickness" Value="0"/>
-						<Setter Property="Padding" Value="0"/>
-						<Setter Property="BorderBrush" Value="Transparent"/>
-					</Style>
-				</Expander.Styles>
-				<cr:SettingsMenu/>
-			</Expander>
+			<Grid Grid.Column="1" RowDefinitions="3*,1*">
+				<Expander VerticalAlignment="Top" Header="Settings" IsExpanded="False" Padding="0" BorderThickness="0 0 0 2" Classes="SettingsToggle" Background="Transparent">
+					<Expander.Styles>
+						<Style Selector="Expander.SettingsToggle ToggleButton">
+							<Setter Property="BorderThickness" Value="0 0 0 2"/>
+							<Setter Property="Margin" Value="0"/>
+							<Setter Property="Background" Value="{StaticResource Background}"/>
+							<Setter Property="BorderBrush" Value="{StaticResource Background}"/>
+						</Style>
+						<Style Selector="Expander.SettingsToggle:expanded ToggleButton">
+							<Setter Property="BorderThickness" Value="0 0 0 2"/>
+							<Setter Property="Margin" Value="0"/>
+							<Setter Property="Background" Value="{StaticResource Background}"/>
+							<Setter Property="BorderBrush" Value="{StaticResource Text90}"/>
+						</Style>
+						<Style Selector="Expander.SettingsToggle Border#ExpanderContent">
+							<Setter Property="BorderThickness" Value="0"/>
+						</Style>
+						<Style Selector="Expander.SettingsToggle ToggleButton:pointerover Border#ExpandCollapseChevronBorder">
+							<Setter Property="Background" Value="{StaticResource Background80}"/>
+							<Setter Property="BorderThickness" Value="0 0 0 2"/>
+							<Setter Property="CornerRadius" Value="0"/>
+							<Setter Property="BorderBrush" Value="{StaticResource Text90}"/>
+						</Style>
+						<Style Selector="Expander.SettingsToggle:expanded ToggleButton:pointerover Border#ToggleButtonBackground">
+							<Setter Property="Background" Value="{StaticResource Background80}"/>
+							<Setter Property="BorderThickness" Value="0 0 0 2"/>
+							<Setter Property="CornerRadius" Value="0"/>
+							<Setter Property="BorderBrush" Value="{StaticResource Text90}"/>
+						</Style>
+
+
+						<Style Selector="Expander.SettingsToggle /template/ Border#ExpanderContent">
+							<Setter Property="Padding" Value="0"/>
+						</Style>
+					</Expander.Styles>
+					<cr:SettingsMenu/>
+				</Expander>
+			</Grid>
 		</Grid>
-		<Grid Background="{StaticResource Background}" Grid.Row="0" ColumnDefinitions="1*,2*,340">
-			<Border Grid.ColumnSpan="3" BorderThickness="0 0 0 2" BorderBrush="{StaticResource Accent}">
+		<Grid Background="{StaticResource Background}" Grid.Row="0" ColumnDefinitions="1*,2*,350">
+			<Border Grid.ColumnSpan="3" BorderThickness="0 0 0 2" BorderBrush="{StaticResource Text90}">
 				
 			</Border>
+			<TextBlock Grid.Column="0" Grid.Row="0" Text="Crystalite"/>
 		</Grid>
 		
 	</Grid>

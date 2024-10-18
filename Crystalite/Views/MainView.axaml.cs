@@ -1,5 +1,7 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
+using Crystalite.Utils;
 using Crystalite.ViewModels;
 using System;
 using System.Diagnostics;
@@ -13,5 +15,8 @@ public partial class MainView : UserControl
         DataContext = new MainViewModel();
         InitializeComponent();
     }
-
+    public void Button_Click(object sender, RoutedEventArgs args)
+    {
+        Slicer.Slice();
+    }
 }

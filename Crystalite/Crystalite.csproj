@@ -20,6 +20,8 @@
     <AvaloniaResource Remove="Assets\Shaders\FXAA.vert" />
     <AvaloniaResource Remove="Assets\Shaders\LitShader.frag" />
     <AvaloniaResource Remove="Assets\Shaders\LitShader.vert" />
+    <AvaloniaResource Remove="Assets\Shaders\NormDrawer.frag" />
+    <AvaloniaResource Remove="Assets\Shaders\NormDrawer.vert" />
     <AvaloniaResource Remove="Assets\Shaders\Outlining.frag" />
     <AvaloniaResource Remove="Assets\Shaders\Outlining.vert" />
     <AvaloniaResource Remove="Assets\Shaders\Shadow.frag" />
@@ -59,6 +61,12 @@
     <AvaloniaResource Update="Assets\Brushes.axaml">
       <SubType>Designer</SubType>
     </AvaloniaResource>
+    <None Update="Assets\Shaders\NormDrawer.vert">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Shaders\NormDrawer.frag">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Assets\Shaders\Shadow.frag">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

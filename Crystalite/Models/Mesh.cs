@@ -40,7 +40,7 @@ namespace Crystalite.Models
             upperRight = new Vector3(float.MinValue, float.MinValue, float.MinValue);
             if (reorient)
             {
-                this.tris = triangles.Select(x=>new Triangle(Reorient(x.a)*scale, Reorient(x.b) * scale, Reorient(x.c) * scale));
+                this.tris = triangles.Select(x=>new Triangle(Reorient(x.a), Reorient(x.b), Reorient(x.c)));
             }
             else
             {
@@ -49,7 +49,7 @@ namespace Crystalite.Models
 
             translation = Matrix4x4.Identity;
             rotation = Matrix4x4.Identity;
-            this.scale = Matrix4x4.Identity;
+            this.scale = Matrix4x4.CreateScale(scale);
             foreach (Triangle triangle in tris)
             {
                 var a = triangle.a;
@@ -65,6 +65,8 @@ namespace Crystalite.Models
 
                 normals.Add(Vector3.Normalize(Vector3.Cross(b - a, c - a)));
             }
+            lowerLeft = Vector3.Transform(lowerLeft, this.scale);
+            upperRight = Vector3.Transform(upperRight, this.scale);
             com /= vertices.Count;
             CalculateVAOData();
             this.shader = shader;
@@ -77,11 +79,14 @@ namespace Crystalite.Models
         {
             return new Vector3(Math.Max(a.X, b.X), Math.Max(a.Y, b.Y), Math.Max(a.Z, b.Z));
         }
-        private Vector3 Reorient(Vector3 originalPos)
+        public static Vector3 Reorient(Vector3 originalPos)
         {
             return new Vector3(originalPos.X, originalPos.Z, -originalPos.Y);
         }
-
+        public static Vector3 Deorient(Vector3 originalPos)
+        {
+            return new Vector3(originalPos.X, -originalPos.Y, originalPos.Z);
+        }
         public void CalculateVAOData()
         {
             var vboList = new List<float>();
@@ -213,6 +218,14 @@ namespace Crystalite.Models
                 Vector3.Transform(Vector3.Transform(Vector3.Transform(x.a,rotation),scale), translation),
                 Vector3.Transform(Vector3.Transform(Vector3.Transform(x.b, rotation), scale), translation),
                 Vector3.Transform(Vector3.Transform(Vector3.Transform(x.c, rotation), scale), translation)
+                )).ToList();
+        }
+        public List<Triangle> GetPrintspacetriangles()
+        {
+            return tris.Select(x => new Triangle(
+                Vector3.Transform(Vector3.Transform(x.a, rotation), translation),
+                Vector3.Transform(Vector3.Transform(x.b, rotation), translation),
+                Vector3.Transform(Vector3.Transform(x.c, rotation), translation)
                 )).ToList();
         }
     }

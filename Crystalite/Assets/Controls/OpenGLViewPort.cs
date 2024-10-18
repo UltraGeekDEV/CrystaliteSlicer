@@ -40,6 +40,10 @@ namespace Crystalite
         private int shadowMapWidth = 2048;
         private int shadowMapHeight = 2048;
 
+        private int normFBO;
+        private int normFBT;
+        private int normRBO;
+
         Mesh postProcess;
 
         private void SetupOpenTK(GlInterface aGLContext)
@@ -54,7 +58,7 @@ namespace Crystalite
                 return;
 
             if (double.IsNaN(size.Height))
-                return;;
+                return;
 
             Debug.WriteLine("resized");
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, frameBufferObject);
@@ -94,6 +98,27 @@ namespace Crystalite
             GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthStencilAttachment, RenderbufferTarget.Renderbuffer, outlineRBO);
 
             CheckError("RB2 resize");
+
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, normFBO);
+
+            //Set texture info and resize it
+            GL.BindTexture(TextureTarget.Texture2D, normFBT);
+            GL.TexImage2D(TextureTarget2d.Texture2D, 0, TextureComponentCount.Rgba32f, (int)size.Width, (int)size.Height, 0, PixelFormat.Rgba, PixelType.Float, 0);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
+            GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget2d.Texture2D, normFBT, 0);
+            Debug.WriteLine(GL.CheckFramebufferStatus(FramebufferTarget.Framebuffer));
+
+            CheckError("FBT3 resize");
+
+            GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, normRBO);
+            GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferInternalFormat.Depth32fStencil8, (int)size.Width, (int)size.Height);
+            GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthStencilAttachment, RenderbufferTarget.Renderbuffer, normRBO);
+            Debug.WriteLine(GL.CheckFramebufferStatus(FramebufferTarget.Framebuffer));
+
+            CheckError("RB3 resize");
 
             shaders[Utils.ShaderType.frameBuffer].Activate();
 
@@ -135,6 +160,10 @@ namespace Crystalite
             outlineFBO = GL.GenFramebuffer();
             outlineFBT = GL.GenTexture();
             outlineRBO = GL.GenRenderbuffer();
+
+            normFBO = GL.GenFramebuffer();
+            normFBT = GL.GenTexture();
+            normRBO = GL.GenRenderbuffer();
 
             shadowMapFBO = GL.GenFramebuffer();
             shadowMapFBT = GL.GenTexture();
@@ -179,14 +208,6 @@ namespace Crystalite
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, outlineFBO);
             GL.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, frameBufferObject);
-
-            CheckError("Render Early1");
-            GL.ClearColor(0.1f, 0.15f, 0.2f, 1.0f);
-            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-            GL.Enable(EnableCap.DepthTest);
-            GL.Enable(EnableCap.CullFace);
-            GL.CullFace(CullFaceMode.Back);
 
             CheckError("Render Early");
 
@@ -218,7 +239,11 @@ namespace Crystalite
 
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, frameBufferObject);
             GL.Viewport(0, 0, (int)Bounds.Width, (int)Bounds.Height);
+            GL.ClearColor(0.6f, 0.7f, 0.8f, 1.0f);
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
             GL.Enable(EnableCap.DepthTest);
+            GL.Enable(EnableCap.CullFace);
+            GL.CullFace(CullFaceMode.Back);
 
             foreach (var layer in MeshData.instance.objectPass)
             {
@@ -259,6 +284,28 @@ namespace Crystalite
                 }
             }
 
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, normFBO);
+            GL.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            GL.Enable(EnableCap.DepthTest);
+            GL.Enable(EnableCap.CullFace);
+            GL.CullFace(CullFaceMode.Back);
+
+            foreach (var layer in MeshData.instance.goochPass)
+            {
+                foreach (var mesh in layer)
+                {
+                    mesh.Draw(aGL, Utils.ShaderType.normal);
+                }
+            }
+            foreach (var layer in MeshData.instance.UIPass.Append(MeshData.instance.staticUI))
+            {
+                foreach (var mesh in layer)
+                {
+                    mesh.Draw(aGL, Utils.ShaderType.unlit,new OpenTK.Mathematics.Vector3(0));
+                }
+            }
+
             GL.Disable(EnableCap.DepthTest);
             GL.Disable(EnableCap.CullFace);
 
@@ -271,6 +318,12 @@ namespace Crystalite
             GL.ActiveTexture(TextureUnit.Texture1);
             GL.BindTexture(TextureTarget.Texture2D, outlineFBT);
 
+            GL.ActiveTexture(TextureUnit.Texture2);
+            GL.BindTexture(TextureTarget.Texture2D, normFBT);
+
+            GL.Uniform1(GL.GetUniformLocation(postProcessShader.program, "screenTexture"), 0);
+            GL.Uniform1(GL.GetUniformLocation(postProcessShader.program, "outlineTexture"), 1);
+            GL.Uniform1(GL.GetUniformLocation(postProcessShader.program, "normalTexture"), 2);
             GL.Uniform1(GL.GetUniformLocation(postProcessShader.program, "width"), (float)Bounds.Width);
             GL.Uniform1(GL.GetUniformLocation(postProcessShader.program, "height"), (float)Bounds.Height);
             postProcess.vao.Bind();

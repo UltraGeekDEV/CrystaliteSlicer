@@ -9,7 +9,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
 {
     public interface IGenerateToolpath
     {
-        public void AddLayer((int height,int thickness)[,] layer);
+        public IGenerateToolpath SplitLayers(IVoxelCollection voxels);
         public IEnumerable<Line> GetPath();
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -17,6 +18,7 @@ namespace Models
 
         private VoxelData[,,] voxels;
         private Vector3Int size;
+        public Vector3 LowerLeft { get; set; }
 
         public ThickVoxelArray(Vector3Int size)
         {

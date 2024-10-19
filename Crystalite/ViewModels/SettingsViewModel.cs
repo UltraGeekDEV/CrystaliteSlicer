@@ -17,6 +17,11 @@ namespace Crystalite.ViewModels
             get => Settings.Resolution.Z;
             set => this.RaiseAndSetIfChanged(ref Settings.Instance.resolution.Z, value);
         }
+        public float HResolution
+        {
+            get => Settings.Resolution.X;
+            set => this.RaiseAndSetIfChanged(ref Settings.Instance.resolution, new Vector3(value,value, Settings.Instance.resolution.Z));
+        }
 
         public Vector3 PrintVolume
         {

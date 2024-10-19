@@ -4,8 +4,15 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Crystalite.Models;
+using Crystalite.ViewModels;
 using Crystalite.Views;
+using CrystaliteSlicer.GcodeGeneration;
+using CrystaliteSlicer.InfillGeneration;
+using CrystaliteSlicer.LayerGeneration;
 using CrystaliteSlicer.MeshImport;
+using CrystaliteSlicer.Postprocessing;
+using CrystaliteSlicer.ToolpathGeneration;
+using CrystaliteSlicer.Voxelize;
 using Models;
 using System;
 using System.Collections.Generic;
@@ -167,10 +174,36 @@ namespace Crystalite.Utils
             return tris;
         }
 
-        internal static void Slice()
+        internal async static void Slice()
         {
+            MainViewModel.SaveSettings();
+            if (MeshData.instance.models.Count == 0)
+            {
+                return;
+            }
+
             var meshes = MeshData.instance.models.SelectMany(x => x.GetPrintspacetriangles().Select(y => Reorient(y)));
-            IVoxelCollection voxels = new FlatVoxelArray();
+            //Voxelize
+            IVoxelCollection voxels = new Voxelizer().Voxelize(meshes);
+            Debug.WriteLine("Voxelized");
+            //Generate Layers
+            new GenerateLayers().GetLayers(voxels);
+            Debug.WriteLine("Generated Layers");
+            //Get Toolpath and Apply Infill
+            IInfill infill = new GridInfill();
+            var toolpath = new NearestNeighborToolpath(voxels,infill).SplitLayers(voxels).GetPath();
+            Debug.WriteLine("Toolpath Generated");
+            Settings.SmoothingAngle = 0.2f;
+            Settings.SmoothingCount = 1;
+
+            toolpath = new SmoothPath().Process(toolpath);
+            Settings.SmoothingCount = 6;
+            Settings.SmoothingAngle = 0.75f;
+            toolpath = new SmoothPath().Process(toolpath);
+            toolpath = new PathFiller().Process(toolpath);
+            toolpath = new SafeTravel().Process(toolpath);
+            toolpath = new PurgeLine().Process(toolpath);
+            File.WriteAllLines( "./Test.gcode", new MarlinGCodeGenerator().GetGcode(toolpath.ToList()));
         }
 
         private static Triangle Reorient(Triangle triangle)

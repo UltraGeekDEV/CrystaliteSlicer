@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -13,6 +14,7 @@ namespace Models
         public VoxelData this[int x, int y, int z] { get => voxels[x + y * size.X + z * zMult]; set => voxels[x + y * size.X + z * zMult] = value; }
         public Vector3Int Size { get => size; set => size = value; }
         public int LayerCount { get => layerCount; set => layerCount = value; }
+        public Vector3 LowerLeft { get; set ; }
 
         private int layerCount;
         private VoxelData[] voxels;

@@ -66,7 +66,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
             this.voxels = voxels;
         }
 
-        public void SplitLayers(IVoxelCollection voxels)
+        public IGenerateToolpath SplitLayers(IVoxelCollection voxels)
         {
 
             (int height, int thickness)[,] curHeight = new (int height, int thickness)[voxels.Size.X, voxels.Size.Y];
@@ -110,6 +110,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                 }
                 AddLayer(layerData);
             }
+            return this;
         }
         public void AddLayer((int height, int thickness)[,] layer)
         {
@@ -308,7 +309,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                 }
 
 
-                retPath.Add(new Line(new Vector3(cur.Key.X, cur.Key.Y, cur.Value.height+1f) * Settings.Resolution+Settings.Offset, new Vector3(pick.Key.X, pick.Key.Y, pick.Value.height + 1f) * Settings.Resolution + Settings.Offset
+                retPath.Add(new Line(new Vector3(cur.Key.X, cur.Key.Y, cur.Value.height+1f) * Settings.Resolution+voxels.LowerLeft, new Vector3(pick.Key.X, pick.Key.Y, pick.Value.height + 1f) * Settings.Resolution + voxels.LowerLeft
                     , (cur.Value.thickness+pick.Value.thickness)*0.5f,Math.Abs(pick.Key.X-cur.Key.X) > 1 || Math.Abs(pick.Key.Y - cur.Key.Y) > 1));
                 cur = pick;
                 pointData.Remove(cur.Key);

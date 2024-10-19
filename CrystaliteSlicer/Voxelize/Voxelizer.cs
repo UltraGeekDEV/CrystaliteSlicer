@@ -53,6 +53,7 @@ namespace CrystaliteSlicer.Voxelize
             startTime = DateTime.Now;
 
             IVoxelCollection voxels = new FlatVoxelArray(upperRight-lowerLeft);
+            voxels.LowerLeft = lowerLeft * Settings.Resolution;
 
             mesh.AsParallel().ForAll(x=>x.GetVoxelsBresenham(voxels));
 

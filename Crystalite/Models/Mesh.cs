@@ -85,7 +85,7 @@ namespace Crystalite.Models
         }
         public static Vector3 Deorient(Vector3 originalPos)
         {
-            return new Vector3(originalPos.X, -originalPos.Y, originalPos.Z);
+            return new Vector3(originalPos.X, -originalPos.Z, originalPos.Y);
         }
         public void CalculateVAOData()
         {
@@ -222,10 +222,12 @@ namespace Crystalite.Models
         }
         public List<Triangle> GetPrintspacetriangles()
         {
+            Matrix4x4 inverseScale ;
+            Matrix4x4.Invert(scale,out inverseScale);
             return tris.Select(x => new Triangle(
-                Vector3.Transform(Vector3.Transform(x.a, rotation), translation),
-                Vector3.Transform(Vector3.Transform(x.b, rotation), translation),
-                Vector3.Transform(Vector3.Transform(x.c, rotation), translation)
+                Vector3.Transform(Vector3.Transform(Vector3.Transform(Vector3.Transform(x.a, rotation), scale), translation),inverseScale),
+                Vector3.Transform(Vector3.Transform(Vector3.Transform(Vector3.Transform(x.b, rotation), scale), translation),inverseScale),
+                Vector3.Transform(Vector3.Transform(Vector3.Transform(Vector3.Transform(x.c, rotation), scale), translation),inverseScale)
                 )).ToList();
         }
     }

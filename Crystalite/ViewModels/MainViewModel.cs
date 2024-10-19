@@ -15,7 +15,7 @@ public class MainViewModel : ViewModelBase
         LoadSettings();
     }
 
-    private void SaveSettings()
+    public static void SaveSettings()
     {
         string appData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify), "Crystalite");
         Directory.CreateDirectory(appData);

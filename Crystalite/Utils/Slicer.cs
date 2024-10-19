@@ -46,7 +46,7 @@ namespace Crystalite.Utils
 
             OpenGLUtils.QueueAction(() =>
             {
-                var importedMesh = new Mesh(mesh, ShaderType.lit);
+                var importedMesh = new Mesh(mesh, ShaderType.lit,center:true);
                 importedMesh.col = new OpenTK.Mathematics.Vector3(0.9372f, 0.3254f+0.1f, 0.0666f + 0.05f)*1.4f;
                 var pos = (importedMesh.upperRight - importedMesh.lowerLeft) * 0.5f;
                 pos += Settings.PrintVolume*new Vector3(0.05f,0,-0.05f);
@@ -125,6 +125,7 @@ namespace Crystalite.Utils
         }
         private static void Addhandles()
         {
+            //Translation handles
             var xHandle = new AxisMesh(new Vector3(1.0f, 0.0f, 0.0f),
                 new MeshImporter().ImportMesh(Path.Combine(AppContext.BaseDirectory, "Assets", "Models", "Arrow.stl")).Select(x => { x.Offset(new Vector3(0.0f, 1.0f, 0.0f)); return x; })
                 ,ShaderType.unlit,0.1f,true);
@@ -135,6 +136,32 @@ namespace Crystalite.Utils
                 new MeshImporter().ImportMesh(Path.Combine(AppContext.BaseDirectory, "Assets", "Models", "Arrow.stl")).Select(x => { x.Offset(new Vector3(0.0f, 1.0f, 0.0f)); return x; })
                 , ShaderType.unlit, 0.1f, true);
             models.translationHandles.Add(yHandle);
+
+            var zHandle = new AxisMesh(new Vector3(0.0f, 1.0f, 0.0f),
+               new MeshImporter().ImportMesh(Path.Combine(AppContext.BaseDirectory, "Assets", "Models", "Arrow.stl")).Select(x => { x.Offset(new Vector3(0.0f, 1.0f, 0.0f)); return x; })
+               , ShaderType.unlit, 0.1f, true);
+            zHandle.rotation = Matrix4x4.CreateFromAxisAngle(new Vector3(1.0f, 0.0f, 0.0f), float.Pi * 0.5f);
+            models.translationHandles.Add(zHandle);
+
+            //Rotation handles
+            var xRotationHandle = new AxisMesh(new Vector3(1.0f, 0.0f, 0.0f),
+               new MeshImporter().ImportMesh(Path.Combine(AppContext.BaseDirectory, "Assets", "Models", "RotationAxis.stl"))
+               , ShaderType.unlit, 0.1f, true);
+            xRotationHandle.rotation = Matrix4x4.CreateFromYawPitchRoll(0, 0, 0);
+            models.rotationHandles.Add(xRotationHandle);
+
+            var yRotationHandle = new AxisMesh(new Vector3(0.0f, 0.0f, 1.0f),
+               new MeshImporter().ImportMesh(Path.Combine(AppContext.BaseDirectory, "Assets", "Models", "RotationAxis.stl"))
+               , ShaderType.unlit, 0.1f, true);
+            yRotationHandle.rotation = Matrix4x4.CreateFromYawPitchRoll(-float.Pi * 0.5f, 0, 0);
+            models.rotationHandles.Add(yRotationHandle);
+
+            var zRotationHandle = new AxisMesh(new Vector3(0.0f, 1.0f, 0.0f),
+              new MeshImporter().ImportMesh(Path.Combine(AppContext.BaseDirectory, "Assets", "Models", "RotationAxis.stl"))
+              , ShaderType.unlit, 0.1f, true);
+            zRotationHandle.rotation = Matrix4x4.CreateFromYawPitchRoll(0, 0, -float.Pi * 0.5f);
+            models.rotationHandles.Add(zRotationHandle);
+
         }
         public static List<Triangle> GetUnitCube()
         {

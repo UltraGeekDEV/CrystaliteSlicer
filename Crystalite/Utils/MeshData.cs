@@ -14,11 +14,13 @@ namespace Crystalite.Utils
         public static MeshData? instance;
         public Mesh? selected;
 
-        public AxisMesh? activeAxis;
+        public AxisMesh? activeTranslationAxis;
+        public AxisMesh? activeRotationAxis;
 
         public List<Mesh> models = new List<Mesh>();
         public List<Mesh> staticUI = new List<Mesh>();
         public List<Mesh> translationHandles = new List<Mesh>();
+        public List<Mesh> rotationHandles = new List<Mesh>();
 
         public List<List<Mesh>> objectPass = new List<List<Mesh>>();
         public List<List<Mesh>> goochPass = new List<List<Mesh>>();
@@ -32,58 +34,77 @@ namespace Crystalite.Utils
         }
         public void ReleaseAxis()
         {
-            if (activeAxis != null)
+            if (activeTranslationAxis != null)
             {
-                activeAxis.ResetCol();
-                activeAxis = null;
+                activeTranslationAxis.ResetCol();
+                activeTranslationAxis = null;
+            }
+            if (activeRotationAxis != null)
+            {
+                activeRotationAxis.ResetCol();
+                activeRotationAxis = null;
             }
         }
-        public void CastRay(Vector3 dir,Vector3 start)
+        public void CastRay(Vector3 dir, Vector3 start)
         {
-            var uiHits = translationHandles.Select(x => x.RayCast(dir, start)).Where(x => x.Item1 >= 0).ToList();
+            var rotationHits = rotationHandles.Select(x => x.RayCast(dir, start)).Where(x => x.Item1 >= 0).ToList();
 
-            if (uiHits.Count() > 0)
+            if (selected != null && rotationHits.Count() > 0)
             {
-                activeAxis = (AxisMesh)uiHits.MinBy(x => x.Item1).Item2;
-                activeAxis.col = new OpenTK.Mathematics.Vector3(Math.Min(activeAxis.col.X+0.4f,1.0f), Math.Min(activeAxis.col.Y + 0.4f, 1.0f), Math.Min(activeAxis.col.Z + 0.4f, 1.0f));
+                activeRotationAxis = (AxisMesh)rotationHits.MinBy(x => x.Item1).Item2;
+                activeRotationAxis.col = new OpenTK.Mathematics.Vector3(Math.Min(activeRotationAxis.col.X + 0.4f, 1.0f), Math.Min(activeRotationAxis.col.Y + 0.4f, 1.0f), Math.Min(activeRotationAxis.col.Z + 0.4f, 1.0f));
+                return;
             }
-            else
-            {
-                if (selected != null)
-                {
-                    selected.hasOutline = false;
-                    selected = null;
-                    DisableTranslationHandles();
-                }
 
-                var modelHits = models.Select(x => x.RayCast(dir, start)).Where(x => x.Item1 >= 0).ToList();
-                if (modelHits.Count() > 0)
-                {
-                    selected = modelHits.MinBy(x => x.Item1).Item2;
-                    selected.hasOutline = true;
-                    EnableTranslationHandles();
-                }
+            var translationHits = translationHandles.Select(x => x.RayCast(dir, start)).Where(x => x.Item1 >= 0).ToList();
+
+            if (selected != null && translationHits.Count() > 0)
+            {
+                activeTranslationAxis = (AxisMesh)translationHits.MinBy(x => x.Item1).Item2;
+                activeTranslationAxis.col = new OpenTK.Mathematics.Vector3(Math.Min(activeTranslationAxis.col.X + 0.4f, 1.0f), Math.Min(activeTranslationAxis.col.Y + 0.4f, 1.0f), Math.Min(activeTranslationAxis.col.Z + 0.4f, 1.0f));
+                return;
             }
+
+            if (selected != null)
+            {
+                selected.hasOutline = false;
+                selected = null;
+                DisableHandles();
+            }
+
+            var modelHits = models.Select(x => x.RayCast(dir, start)).Where(x => x.Item1 >= 0).ToList();
+            if (modelHits.Count() > 0)
+            {
+                selected = modelHits.MinBy(x => x.Item1).Item2;
+                selected.hasOutline = true;
+                EnableHandles();
+            }
+
         }
-        private void EnableTranslationHandles()
+        private void EnableHandles()
         {
             UIPass.Add(translationHandles);
+            UIPass.Add(rotationHandles);
             UpdateTranslationHandles();
         }
         public void UpdateTranslationHandles() 
         {
             foreach (var mesh in translationHandles)
             {
-                var ll = Vector3.Transform(Vector3.Transform(Vector3.Transform(selected.com, selected.rotation), selected.scale), selected.translation) * new Vector3(1.0f, 0, 1.0f);
-                var ur = Vector3.Transform(Vector3.Transform(Vector3.Transform(selected.upperRight, selected.rotation), selected.scale), selected.translation);
-                ll.Y = ur.Y * 0.25f;
-                mesh.translation = Matrix4x4.CreateTranslation(ll);
+                var rot = Vector3.Transform(Vector3.Transform(Vector3.Transform(Vector3.Zero, selected.rotation), selected.scale), selected.translation);
+                mesh.translation = Matrix4x4.CreateTranslation(rot);
+            }
+            foreach (var mesh in rotationHandles)
+            {
+                var rot = Vector3.Transform(Vector3.Transform(Vector3.Transform(Vector3.Zero, selected.rotation), selected.scale), selected.translation);
+                mesh.translation = Matrix4x4.CreateTranslation(rot);
             }
         }
 
-        private void DisableTranslationHandles()
+        private void DisableHandles()
         {
             UIPass.Remove(translationHandles);
+            UIPass.Remove(rotationHandles);
         }
     }
 }

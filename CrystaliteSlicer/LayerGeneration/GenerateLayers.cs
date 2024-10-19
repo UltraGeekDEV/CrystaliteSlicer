@@ -33,7 +33,7 @@ namespace CrystaliteSlicer.LayerGeneration
 
             height = new (int minZ, int maxZ)[voxels.Size.X, voxels.Size.Y];
 
-            zVoxelsPerX = (MathF.Tan(Settings.MaxSlope * (MathF.PI / 180.0f)) * Settings.Resolution.X / Settings.Resolution.Z);
+            zVoxelsPerX = (MathF.Tan(Settings.MaxSlope * (MathF.PI / 180.0f)) * (Settings.Resolution.X / Settings.Resolution.Z));
             curLayer = 1;
 
             List<Vector3Int> activeEdge = new List<Vector3Int>();

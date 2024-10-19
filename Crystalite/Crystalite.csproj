@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <AvaloniaResource Remove="Assets\Models\Arrow.stl" />
+    <AvaloniaResource Remove="Assets\Models\RotationAxis.stl" />
     <AvaloniaResource Remove="Assets\Shaders\BuildPlate.frag" />
     <AvaloniaResource Remove="Assets\Shaders\BuildPlate.vert" />
     <AvaloniaResource Remove="Assets\Shaders\FrameBuffer.frag" />
@@ -42,6 +43,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="Assets\Controls\RotationAxis.stl" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="$(AvaloniaVersion)" />
@@ -61,6 +66,9 @@
     <AvaloniaResource Update="Assets\Brushes.axaml">
       <SubType>Designer</SubType>
     </AvaloniaResource>
+    <None Update="Assets\Models\RotationAxis.stl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Assets\Shaders\NormDrawer.vert">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

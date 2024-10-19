@@ -13,9 +13,7 @@ namespace Crystalite.Models
 {
     public class Mesh
     {
-        public IEnumerable<Triangle> tris = new List<Triangle>();
-        public List<Vector3> vertices = new List<Vector3>();
-        public List<Vector3> normals = new List<Vector3>();
+        public List<Triangle> tris = new List<Triangle>();
         public Vector3 lowerLeft;
         public Vector3 upperRight;
         public Vector3 com;
@@ -23,6 +21,7 @@ namespace Crystalite.Models
         public Matrix4x4 translation;
         public Matrix4x4 rotation;
         public Matrix4x4 scale;
+        public Vector3 rotationAngles;
 
         public Utils.ShaderType shader;
         public bool depthTest = true;
@@ -34,17 +33,17 @@ namespace Crystalite.Models
 
         public Mesh() { }
 
-        public Mesh(IEnumerable<Triangle> triangles,Utils.ShaderType shader,float scale = 0.1f,bool reorient = true)
+        public Mesh(IEnumerable<Triangle> triangles,Utils.ShaderType shader,float scale = 0.1f,bool reorient = true,bool center = false)
         {
             lowerLeft = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
             upperRight = new Vector3(float.MinValue, float.MinValue, float.MinValue);
             if (reorient)
             {
-                this.tris = triangles.Select(x=>new Triangle(Reorient(x.a), Reorient(x.b), Reorient(x.c)));
+                this.tris = triangles.Select(x=>new Triangle(Reorient(x.a), Reorient(x.b), Reorient(x.c))).ToList();
             }
             else
             {
-                this.tris = triangles;
+                this.tris = triangles.ToList();
             }
 
             translation = Matrix4x4.Identity;
@@ -58,16 +57,22 @@ namespace Crystalite.Models
                 com += a + b + c;
                 lowerLeft = Min(lowerLeft, Min(a, Min(b, c)));
                 upperRight = Max(upperRight, Max(a, Max(b, c)));
-
-                vertices.Add(a);
-                vertices.Add(b);
-                vertices.Add(c);
-
-                normals.Add(Vector3.Normalize(Vector3.Cross(b - a, c - a)));
             }
-            lowerLeft = Vector3.Transform(lowerLeft, this.scale);
-            upperRight = Vector3.Transform(upperRight, this.scale);
-            com /= vertices.Count;
+
+            com /= tris.Count*3;
+            if (center)
+            {
+                lowerLeft = Vector3.Transform(lowerLeft, this.scale) - Vector3.Transform(com, this.scale);
+                upperRight = Vector3.Transform(upperRight, this.scale) - Vector3.Transform(com, this.scale);
+
+                tris = tris.Select(x => { x.Offset(-com); return x; }).ToList();
+            }
+            else
+            {
+                lowerLeft = Vector3.Transform(lowerLeft, this.scale);
+                upperRight = Vector3.Transform(upperRight, this.scale);
+            }
+
             CalculateVAOData();
             this.shader = shader;
         }
@@ -91,14 +96,34 @@ namespace Crystalite.Models
         {
             var vboList = new List<float>();
 
-            for (int i = 0; i < vertices.Count; i++)
+            for (int i = 0; i < tris.Count; i++)
             {
-                vboList.Add(vertices[i].X);
-                vboList.Add(vertices[i].Y);
-                vboList.Add(vertices[i].Z);
-                vboList.Add(normals[i / 3].X);
-                vboList.Add(normals[i / 3].Y);
-                vboList.Add(normals[i / 3].Z);
+                var tri = tris[i];
+                var normal = Vector3.Normalize(Vector3.Cross(tri.b - tri.a, tri.c - tri.a));
+
+                vboList.Add(tri.a.X);
+                vboList.Add(tri.a.Y);
+                vboList.Add(tri.a.Z);
+
+                vboList.Add(normal.X);
+                vboList.Add(normal.Y);
+                vboList.Add(normal.Z);
+
+                vboList.Add(tri.b.X);
+                vboList.Add(tri.b.Y);
+                vboList.Add(tri.b.Z);
+
+                vboList.Add(normal.X);
+                vboList.Add(normal.Y);
+                vboList.Add(normal.Z);
+
+                vboList.Add(tri.c.X);
+                vboList.Add(tri.c.Y);
+                vboList.Add(tri.c.Z);
+
+                vboList.Add(normal.X);
+                vboList.Add(normal.Y);
+                vboList.Add(normal.Z);
             }
             vao = new VAO();
             
@@ -194,7 +219,7 @@ namespace Crystalite.Models
             OpenGLUtils.CheckError("Render Set Attribs");
 
             GL.Uniform3(col, ref this.col);
-            GL.DrawArrays(PrimitiveType.Triangles, 0, vertices.Count * 6);
+            GL.DrawArrays(PrimitiveType.Triangles, 0, tris.Count*3);
             OpenGLUtils.CheckError("Render");
             vao.Unbind();
         }
@@ -229,6 +254,17 @@ namespace Crystalite.Models
                 Vector3.Transform(Vector3.Transform(Vector3.Transform(Vector3.Transform(x.b, rotation), scale), translation),inverseScale),
                 Vector3.Transform(Vector3.Transform(Vector3.Transform(Vector3.Transform(x.c, rotation), scale), translation),inverseScale)
                 )).ToList();
+        }
+
+        internal void CreateFromYawPitchRoll()
+        {
+            var quat = Quaternion.CreateFromYawPitchRoll(rotationAngles.Y, rotationAngles.X, rotationAngles.Z);
+            rotation = Matrix4x4.CreateFromQuaternion(quat);
+        }
+
+        public void Rotate(Vector3 rot)
+        {
+            rotation = rotation * Matrix4x4.CreateRotationX(rot.X) * Matrix4x4.CreateRotationY(rot.Y) * Matrix4x4.CreateRotationZ(rot.Z);
         }
     }
 }

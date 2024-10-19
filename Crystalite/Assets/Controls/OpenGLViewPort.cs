@@ -327,7 +327,7 @@ namespace Crystalite
             GL.Uniform1(GL.GetUniformLocation(postProcessShader.program, "width"), (float)Bounds.Width);
             GL.Uniform1(GL.GetUniformLocation(postProcessShader.program, "height"), (float)Bounds.Height);
             postProcess.vao.Bind();
-            GL.DrawArrays(PrimitiveType.Triangles, 0, postProcess.vertices.Count * 6);
+            GL.DrawArrays(PrimitiveType.Triangles, 0, postProcess.tris.Count*3);
 
             GL.Enable(EnableCap.DepthTest);
             GL.Enable(EnableCap.CullFace);
@@ -355,7 +355,7 @@ namespace Crystalite
             GL.Uniform1(GL.GetUniformLocation(postProcessShader.program, "width"), (float)Bounds.Width);
             GL.Uniform1(GL.GetUniformLocation(postProcessShader.program, "height"), (float)Bounds.Height);
             postProcess.vao.Bind();
-            GL.DrawArrays(PrimitiveType.Triangles, 0, postProcess.vertices.Count * 6);
+            GL.DrawArrays(PrimitiveType.Triangles, 0, postProcess.tris.Count*3);
             CheckError("AA");
         }
         

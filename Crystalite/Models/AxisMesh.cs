@@ -11,6 +11,7 @@ namespace Crystalite.Models
     public class AxisMesh : Mesh
     {
         public Vector3 axis;
+        public Matrix4x4 originalRotation;
 
         public AxisMesh(Vector3 axis, IEnumerable<Triangle> triangles, Utils.ShaderType shader, float scale = 0.1f, bool reorient = true) : base(triangles,shader,scale)
         {

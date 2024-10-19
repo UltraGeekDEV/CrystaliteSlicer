@@ -132,7 +132,7 @@ public partial class _3DViewPort : UserControl
             CameraData.instance.eulerAngles.X = Math.Clamp(CameraData.instance.eulerAngles.X, -85, 85);
             rmbPoint = cur;
         }
-        if (lmbWasPressed && MeshData.instance.activeAxis != null)
+        if (lmbWasPressed && MeshData.instance.activeTranslationAxis != null)
         {
             var view = this.FindDescendantOfType<OpenGLViewPort>();
 
@@ -145,13 +145,39 @@ public partial class _3DViewPort : UserControl
             var dir = (lmbPoint-cur);
             var dirVec = new Vector3((float)-dir.X / (float)width, (float)dir.Y / (float)height, 0)*20;
             var zero = Vector3.Transform(Vector3.Transform(Vector3.Zero, perspective),  CameraData.CreateViewMatrix());
-            var axisDir = Vector3.Normalize(Vector3.Transform(Vector3.Transform(MeshData.instance.activeAxis.axis, perspective),  CameraData.CreateViewMatrix())-zero);
+            var axisDir = Vector3.Normalize(Vector3.Transform(Vector3.Transform(MeshData.instance.activeTranslationAxis.axis, perspective),  CameraData.CreateViewMatrix())-zero);
 
-            MeshData.instance.selected.translation.Translation += MeshData.instance.activeAxis.axis*Vector3.Dot(axisDir,dirVec)*new Vector3(1.0f,1.0f,-1.0f);
+            MeshData.instance.selected.translation.Translation += MeshData.instance.activeTranslationAxis.axis*Vector3.Dot(axisDir,dirVec)*new Vector3(1.0f,1.0f,-1.0f);
             MeshData.instance.UpdateTranslationHandles();
             Cursor = new Cursor(StandardCursorType.None);
             SetCursorPos(curPoint.x, curPoint.y);
             
+        }
+        if (lmbWasPressed && MeshData.instance.activeRotationAxis != null)
+        {
+            var view = this.FindDescendantOfType<OpenGLViewPort>();
+
+            var width = view.Bounds.Width;
+            var height = view.Bounds.Height;
+
+            var perspective = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)(width / height), 0.01f, 1000f);
+
+            var cur = args.GetPosition(sender as Control);
+            var dir = (lmbPoint - cur);
+            var dirVec = new Vector3((float)-dir.X / (float)width, (float)dir.Y / (float)height, 0) * 10;
+            var zero = Vector3.Transform(Vector3.Transform(Vector3.Zero, perspective), CameraData.CreateViewMatrix());
+            var rotatedAxis = MeshData.instance.activeRotationAxis.axis;
+            rotatedAxis = new Vector3(rotatedAxis.Z, 0,-rotatedAxis.X)+ new Vector3(-rotatedAxis.Y, 0, rotatedAxis.Y);
+            rotatedAxis = Vector3.Normalize(rotatedAxis);
+            var axisDir = Vector3.Normalize(Vector3.Transform(Vector3.Transform(rotatedAxis, perspective), CameraData.CreateViewMatrix()) - zero);
+
+
+            //MeshData.instance.selected.rotationAngles += MeshData.instance.activeRotationAxis.axis * Vector3.Dot(axisDir, dirVec) * new Vector3(1.0f, 1.0f, -1.0f);
+            MeshData.instance.selected.Rotate(MeshData.instance.activeRotationAxis.axis * Vector3.Dot(axisDir, dirVec) * new Vector3(1.0f, 1.0f, -1.0f));
+            MeshData.instance.UpdateTranslationHandles();
+            Cursor = new Cursor(StandardCursorType.None);
+            SetCursorPos(curPoint.x, curPoint.y);
+
         }
     }
     public void OpenGLViewPort_PointerWheelChanged(object sender, PointerWheelEventArgs args)

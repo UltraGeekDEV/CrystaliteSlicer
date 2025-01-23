@@ -16,7 +16,7 @@ namespace CrystaliteSlicer.GcodeGeneration
             List<string> ret = new List<string>();
 
             var nfi = new NumberFormatInfo();
-            nfi.NumberDecimalDigits = '.';
+            nfi.NumberDecimalSeparator = ".";
             nfi.NumberDecimalDigits = 4;
 
             float wallFeedrate = Settings.OuterWallSpeed * 60;

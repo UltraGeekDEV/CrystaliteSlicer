@@ -8,8 +8,10 @@ using System.Threading.Tasks;
 
 namespace Models
 {
+    
     public interface IVoxelCollection
     {
+        public static int airVoxel = -1;
         public VoxelData this[Vector3Int pos] { get;set; }
         public VoxelData this[int x,int y,int z] { get;set; }
         public Vector3Int Size { get; set; }

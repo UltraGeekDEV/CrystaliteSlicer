@@ -30,7 +30,7 @@ namespace CrystaliteSlicer.LayerGeneration
             nozzleSize = new Vector3Int((new Vector3(Settings.NozzleDiameter, Settings.NozzleDiameter, 0) / Settings.Resolution) * (1.0f - Settings.OverhangOverlap));
             maxLayerThickness = Math.Max((int)(Settings.MaxLayerHeight / Settings.Resolution.Z), 1);
 
-            zVoxelsPerX = (MathF.Tan(Settings.MaxSlope * (MathF.PI / 180.0f)) * Settings.Resolution.X / Settings.Resolution.Z);
+            zVoxelsPerX = (MathF.Tan(Settings.MaxSlope * (MathF.PI / 180.0f)) * Settings.Resolution.X / Settings.Resolution.Z)* nozzleSize.X;
 
             chunked = new ChunkedVoxelArray(voxels, nozzleSize.X);
 
@@ -74,7 +74,7 @@ namespace CrystaliteSlicer.LayerGeneration
         }
         private void GetNextLayer()
         {
-            var valid = GetPossibleVoxels(activeEdge);
+            var valid = FilterBlocking(GetPossibleVoxels(activeEdge));
             foreach (var pos in valid)
             {
                 var voxel = chunked[pos];
@@ -113,12 +113,12 @@ namespace CrystaliteSlicer.LayerGeneration
             float[,] maxHeight = new float[chunked.Size.X, chunked.Size.Y];
             var activeVoxels = curLayer.Select(x => new Vector3Int(x.X, x.Y, 0)).Distinct().ToHashSet();
 
-            foreach (var voxel in curLayer)
+            float curValue = 0;
+            foreach (var voxel in curLayer.GroupBy(x=>new Vector3Int(x.X,x.Y,0)))
             {
-                maxHeight[voxel.X, voxel.Y] = MathF.Max(maxHeight[voxel.X, voxel.Y], voxel.Z);
+                maxHeight[voxel.Key.X, voxel.Key.Y] = voxel.Max(x => x.Z);
+                curValue = MathF.Max(curValue, maxHeight[voxel.Key.X,voxel.Key.Y]);
             }
-
-            float curValue = float.MaxValue;
 
             for (int x = 0; x < chunked.Size.X; x++)
             {
@@ -151,8 +151,41 @@ namespace CrystaliteSlicer.LayerGeneration
                     maxHeight[x, y] = curValue;
                 }
             }
+            for (int y = 0; y < chunked.Size.Y; y++)
+            {
+                for (int x = 0; x < chunked.Size.X; x++)
+                {
+                    if (activeVoxels.Contains(new Vector3Int(x, y, 0)))
+                    {
+                        curValue = MathF.Min(curValue + zVoxelsPerX, maxHeight[x, y]);
+                    }
+                    else
+                    {
+                        curValue += zVoxelsPerX;
+                    }
+                    maxHeight[x, y] = curValue;
+                }
+            }
+            for (int y = chunked.Size.Y - 1; y >= 0; y--)   
+            {
+                for (int x = chunked.Size.X - 1; x >= 0; x--)
+                {
+                    if (activeVoxels.Contains(new Vector3Int(x, y, 0)))
+                    {
+                        curValue = MathF.Min(curValue + zVoxelsPerX, maxHeight[x, y]);
+                    }
+                    else
+                    {
+                        curValue += zVoxelsPerX;
+                    }
+                    maxHeight[x, y] = curValue;
+                }
+            }
 
-            return curLayer.Where(x => maxHeight[x.X, x.Y] >= x.Z).ToList();
+            int countBeforeFilter = curLayer.Count();
+            var ret = curLayer.Where(x => maxHeight[x.X, x.Y] >= x.Z).ToList();
+            Debug.WriteLine($"{countBeforeFilter-ret.Count} voxels were above the slope limit");
+            return ret;
         }
     }
 }

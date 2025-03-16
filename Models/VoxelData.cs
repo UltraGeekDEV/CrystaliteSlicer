@@ -11,7 +11,16 @@ namespace Models
         private short depth;
         private short layer;
 
-        public int Depth { get => depth; set => depth = (short)Math.Min(value,short.MaxValue); }
-        public int Layer { get => layer; set => layer = (short)Math.Min(value,short.MaxValue); }
+        public int Depth { get => depth; set => depth = (short)Math.Min(value, short.MaxValue); }
+        public int Layer { get => layer; set => layer = (short)Math.Min(value, short.MaxValue); }
+
+        public static VoxelData GetAir()
+        {
+            return new VoxelData() { Depth = -1, Layer = 0 };
+        }
+        public static VoxelData GetSolid()
+        {
+            return new VoxelData() { Depth = 0, Layer = 0 };
+        }
     }
 }

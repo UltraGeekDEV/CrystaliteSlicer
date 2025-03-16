@@ -1,12 +1,13 @@
-﻿using Models;
+﻿using CrystaliteSlicer.ToolpathGeneration;
+using Models;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Reflection.PortableExecutable;
 using System.Text;
-using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace CrystaliteSlicer.LayerGeneration
@@ -16,284 +17,175 @@ namespace CrystaliteSlicer.LayerGeneration
         Vector3Int nozzleSize;
         int maxLayerThickness;
         IVoxelCollection voxels;
-
-        (int minZ, int maxZ)[,] height;
-        float[,] maxHeight;
-        (int minZ, int maxZ)[,] nextHeight;
+        IVoxelCollection chunked;
 
         float zVoxelsPerX;
-        int curLayer;
-        const float diagonalConstant = 0.3f;
+        int curLayer = 1;
 
+        List<Vector3Int> activeEdge = new List<Vector3Int>();
+        List<Vector3Int> neighbours;
         public void GetLayers(IVoxelCollection voxels)
         {
             this.voxels = voxels;
             nozzleSize = new Vector3Int((new Vector3(Settings.NozzleDiameter, Settings.NozzleDiameter, 0) / Settings.Resolution) * (1.0f - Settings.OverhangOverlap));
             maxLayerThickness = Math.Max((int)(Settings.MaxLayerHeight / Settings.Resolution.Z), 1);
 
-            height = new (int minZ, int maxZ)[voxels.Size.X, voxels.Size.Y];
+            zVoxelsPerX = (MathF.Tan(Settings.MaxSlope * (MathF.PI / 180.0f)) * Settings.Resolution.X / Settings.Resolution.Z)* nozzleSize.X;
 
-            zVoxelsPerX = (MathF.Tan(Settings.MaxSlope * (MathF.PI / 180.0f)) * (Settings.Resolution.X / Settings.Resolution.Z));
-            curLayer = 1;
+            chunked = new ChunkedVoxelArray(voxels, nozzleSize.X);
 
-            List<Vector3Int> activeEdge = new List<Vector3Int>();
-            object activeEdgeLock = new object();
-
-            var firstLayer = Math.Min(maxLayerThickness, voxels.Size.Z);
-            var tasks = Enumerable.Range(0, voxels.Size.X).Select(x => Task.Run(() =>
+            neighbours = LUTS.neighbours.ToList();
+            for (int i = 1; i < maxLayerThickness; i++)
             {
-                for (int y = 0; y < voxels.Size.Y; y++)
-                {
-                    for (int z = 0; z < firstLayer; z++)
-                    {
-                        if (voxels[x, y, z].Depth != -1)
-                        {
-                            var voxel = voxels[x, y, z];
-                            voxel.Layer = 1;
-                            voxels[x, y, z] = voxel;
-                            height[x, y] = (Math.Min(height[x, y].maxZ, z + 1), Math.Max(height[x, y].minZ, z + 1));
-                            lock (activeEdgeLock)
-                            {
-                                activeEdge.Add(new Vector3Int(x, y, z));
-                            }
-                        }
-                    }
-                }
-            }));
-            Task.WaitAll(tasks.ToArray());
+                neighbours.Add(new Vector3Int(0, 0, i + 1));
+            }
 
-            while (activeEdge.Count > 0)
+            var queue = new Queue<Vector3Int>();
+
+            for (int x = 0; x < chunked.Size.X; x++)
             {
-                curLayer++;
-
-                maxHeight = new float[voxels.Size.X, voxels.Size.Y];
-                nextHeight = new (int minZ, int maxZ)[voxels.Size.X, voxels.Size.Y];
-                var checkHeight = new int[voxels.Size.X, voxels.Size.Y];
-                var minHeight = new int[voxels.Size.X, voxels.Size.Y];
-                var neighbours = new List<(int x, int y)>() {
-                (-1,0),
-                (0,1),
-                (1,0),
-                (0,-1),
-                };
-
-                var maxHeightY = new float[voxels.Size.X, voxels.Size.Y];
-                var maxHeightX = new float[voxels.Size.X, voxels.Size.Y];
-
-                var sqrNozzleSize = nozzleSize.X * nozzleSize.X;
-
-                var CheckAttachedAction = (int x) =>
+                for (int y = 0; y < chunked.Size.Y; y++)
                 {
-                    for (int y = 0; y < voxels.Size.Y; y++)
+                    for (int z = 0; z < maxLayerThickness; z++)
                     {
-                        if (height[x, y].maxZ != 0 && neighbours.Any(coord =>
+                        if (chunked.Contains(new Vector3Int(x, y, z)))
                         {
-                            var pos = new Vector3Int(coord.x + x, coord.y + y);
-                            return voxels.WithinBounds(pos) && height[pos.X, pos.Y].maxZ == 0;
-                        }))
-                        {
-                            for (int i = -nozzleSize.X; i <= nozzleSize.X; i++)
-                            {
-                                for (int j = -nozzleSize.Y; j <= nozzleSize.Y; j++)
-                                {
-                                    var check = new Vector3Int(x+i, y+j, 0);
-                                    if (voxels.WithinBounds(check) && height[check.X,check.Y].maxZ == 0 && (i*i+j*j) <= sqrNozzleSize)
-                                    {
-                                        var fromZ = height[x,y].minZ;
-                                        var toZ = fromZ + maxLayerThickness;
-
-                                        for (int z = fromZ; z <= toZ; z++)
-                                        {
-                                            check.Z = z;
-                                            if (voxels.Contains(check) && voxels[check].Layer == 0)
-                                            {
-                                                if (checkHeight[check.X, check.Y] == 0)
-                                                {
-                                                    checkHeight[check.X, check.Y] = z;
-                                                    minHeight[check.X, check.Y] = z;
-                                                }
-                                                else
-                                                {
-                                                    checkHeight[check.X, check.Y] = Math.Max(checkHeight[check.X, check.Y], z);
-                                                    minHeight[check.X, check.Y] = Math.Min(minHeight[check.X, check.Y], z);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            var voxel = chunked[x, y, z];
+                            voxel.Layer = curLayer;
+                            chunked[x, y, z] = voxel;
+                            activeEdge.Add(new Vector3Int(x, y, z));
                         }
                     }
-                };
-
-                var chunkSize = nozzleSize.X * 2 + 2;
-                int threadCount = Math.Max(voxels.Size.X / chunkSize,1);
-
-                for (int i = 0; i < chunkSize; i++)
-                {
-                    tasks = Enumerable.Range(0, threadCount).Where(x => x * chunkSize + i < voxels.Size.X).Select(x => Task.Run(() => CheckAttachedAction(x * chunkSize + i)));
-                    Task.WaitAll(tasks.ToArray());
-                }
-
-                tasks = Enumerable.Range(0, voxels.Size.X).Select(x => Task.Run(() =>
-                {
-                    for (int y = 0; y < voxels.Size.Y; y++)
-                    {
-                        if (height[x,y].maxZ != 0)
-                        {
-                            checkHeight[x,y] = height[x,y].maxZ;
-                        }
-                    }
-                }));
-                Task.WaitAll(tasks.ToArray());
-
-                //Get max height
-                //loop y +-
-                tasks = Enumerable.Range(0, voxels.Size.X).AsParallel().Select(x => Task.Run(() =>
-                {
-                    float curMaxHeight = voxels.Size.Z * 2;
-                    for (int y = 0; y < voxels.Size.Y; y++)
-                    {
-                        if (checkHeight[x, y] != 0)
-                        {
-                            float curMaxZ = checkHeight[x, y] + maxLayerThickness;
-                            curMaxHeight = Math.Min(curMaxZ, curMaxHeight + zVoxelsPerX);
-                        }
-                        else
-                        {
-                            curMaxHeight += zVoxelsPerX;
-                        }
-                        maxHeightY[x, y] = curMaxHeight;
-                    }
-                    curMaxHeight = maxHeightY[x, voxels.Size.Y - 1];
-                    for (int y = voxels.Size.Y - 2; y >= 0; y--)
-                    {
-                        curMaxHeight = Math.Min(maxHeightY[x, y], curMaxHeight + zVoxelsPerX);
-                        maxHeightY[x, y] = curMaxHeight;
-                    }
-                }));
-                Task.WaitAll(tasks.ToArray());
-
-                //Loop x +-
-
-                tasks = Enumerable.Range(0, voxels.Size.Y).AsParallel().Select(y => Task.Run(() =>
-                {
-                    float curMaxHeightY = maxHeightY[0, y];
-                    for (int x = 1; x < voxels.Size.X; x++)
-                    {
-                        curMaxHeightY = Math.Min(maxHeightY[x, y], curMaxHeightY + (zVoxelsPerX*diagonalConstant));
-                        maxHeightY[x, y] = curMaxHeightY;
-                    }
-                    curMaxHeightY = maxHeightY[voxels.Size.X - 1, y];
-                    for (int x = voxels.Size.X - 2; x >= 0; x--)
-                    {
-                        curMaxHeightY = Math.Min(maxHeightY[x, y], curMaxHeightY + (zVoxelsPerX * diagonalConstant));
-                        maxHeightY[x, y] = curMaxHeightY;
-                    }
-
-                    //maxHeight X pass
-                    float curMaxHeight = voxels.Size.Z * 2;
-                    for (int x = 0; x < voxels.Size.X; x++)
-                    {
-                        if (checkHeight[x, y] != 0)
-                        {
-                            float curMaxZ = checkHeight[x, y] + maxLayerThickness;
-                            curMaxHeight = Math.Min(curMaxZ, curMaxHeight + zVoxelsPerX);
-                        }
-                        else
-                        {
-                            curMaxHeight += zVoxelsPerX;
-                        }
-                        maxHeightX[x, y] = curMaxHeight;
-                    }
-                    curMaxHeight = maxHeightX[voxels.Size.X - 1, y];
-                    for (int x = voxels.Size.X - 2; x >= 0; x--)
-                    {
-                        curMaxHeight = Math.Min(maxHeightX[x, y], curMaxHeight + zVoxelsPerX);
-                        maxHeightX[x, y] = curMaxHeight;
-                    }
-                }));
-                Task.WaitAll(tasks.ToArray());
-
-                //Get max height
-                //2nd loop y +-
-                tasks = Enumerable.Range(0, voxels.Size.X).AsParallel().Select(x => Task.Run(() =>
-                {
-                    float curMaxHeight = maxHeightX[x, 0];
-                    for (int y = 1; y < voxels.Size.Y; y++)
-                    {
-                        curMaxHeight = Math.Min(maxHeightX[x, y], curMaxHeight + (zVoxelsPerX * diagonalConstant));
-                        maxHeightX[x, y] = curMaxHeight;
-                    }
-                    curMaxHeight = maxHeightX[x, voxels.Size.Y - 1];
-                    for (int y = voxels.Size.Y - 2; y >= 0; y--)
-                    {
-                        curMaxHeight = Math.Min(maxHeightX[x, y], curMaxHeight + (zVoxelsPerX * diagonalConstant));
-                        maxHeightX[x, y] = curMaxHeight;
-                        maxHeight[x, y] = Math.Max(maxHeightX[x, y], maxHeightY[x, y]);
-                    }
-                }));
-                Task.WaitAll(tasks.ToArray());
-
-                //Get next layer
-
-                var results = new List<Vector3Int>[voxels.Size.X];
-
-                tasks = Enumerable.Range(0, voxels.Size.X).Select(x => Task.Run(() =>
-                {
-                    var ret = new List<Vector3Int>();
-                    for (int y = 0; y < voxels.Size.Y; y++)
-                    {
-                        if (checkHeight[x,y] != 0)
-                        {
-                            for (int z = minHeight[x,y]; z <= maxHeight[x,y] && z < voxels.Size.Z; z++)
-                            {
-                                var check = new Vector3Int(x, y, z);
-                                var voxelData = voxels[check];
-                                if (voxelData.Layer == 0 && voxelData.Depth != -1)
-                                {
-                                    ret.Add(check);
-                                    var voxel = voxels[x,y,z];
-                                    voxel.Layer = curLayer;
-                                    voxels[x,y,z] = voxel;
-                                }
-                            }
-                        }
-                    }
-                    results[x] = ret;
-                }));
-                Task.WaitAll(tasks.ToArray());
-
-                var nextLayerVoxels = results.AsParallel().SelectMany(x=>x).ToList();
-                var stillOpen = activeEdge.AsParallel().Where(HasOpenFace).ToList();
-                var allActiveVoxels = stillOpen.AsParallel().Union(nextLayerVoxels.AsParallel().Where(HasOpenFace));
-                var groupedEdge = allActiveVoxels.GroupBy(x => new Vector3Int(x.X, x.Y)).ToList();
-                groupedEdge.AsParallel().ForAll(x =>
-                {
-                    nextHeight[x.Key.X, x.Key.Y] = (x.Min(x => x.Z), x.Max(x => x.Z));
-                });
-                activeEdge = groupedEdge.Select(x => new Vector3Int(x.Key.X, x.Key.Y, nextHeight[x.Key.X, x.Key.Y].minZ)).ToList();
-                height = nextHeight;
-
-                if (nextLayerVoxels.Count == 0)
-                {
-                    break;
                 }
             }
-            voxels.LayerCount = curLayer;
+
+            curLayer++;
+
+            Debug.WriteLine($"Max possible voxel count: {chunked.Size.X*chunked.Size.Y*maxLayerThickness}");
+
+            activeEdge = FilterActiveEdge(activeEdge);
+            GetNextLayer();
+
+            while(activeEdge.Count > 0)
+            {
+                GetNextLayer();
+            }
+            voxels.LayerCount = curLayer - 1;
+        }
+        private void GetNextLayer()
+        {
+            var valid = FilterBlocking(GetPossibleVoxels(activeEdge));
+            foreach (var pos in valid)
+            {
+                var voxel = chunked[pos];
+                voxel.Layer = curLayer;
+                chunked[pos] = voxel;
+                activeEdge.Add(pos);
+            }
+
+            activeEdge = FilterActiveEdge(activeEdge);
+
+            if (valid.Count == 0)
+            {
+                activeEdge.Clear();
+            }
+            Debug.WriteLine($"Finished layer {curLayer} with {activeEdge.Count} voxels in active edge");
+            curLayer++;
+        }
+        //Get all voxels from collection that still have active,spreadable faces
+        private List<Vector3Int> FilterActiveEdge(IEnumerable<Vector3Int> activeEdge)
+        {
+            return activeEdge.Where(x => LUTS.neighbours.Any(y =>
+            {
+                var pos = x + y;
+                return chunked.Contains(pos) && chunked[pos].Layer == 0;
+            })).ToList();
         }
 
-        private bool HasOpenFace(Vector3Int x)
+        //Gets all possible next layer voxels regardless of collision possibility
+        private List<Vector3Int> GetPossibleVoxels(IEnumerable<Vector3Int> curLayer)
         {
-            for (int i = 0; i < LUTS.faceOffsets.Count; i++)
+            return curLayer.SelectMany(x=>neighbours.Select(y=>x+y)).Where(x=>chunked.Contains(x) && chunked[x].Layer == 0).Distinct().ToList();
+        }
+        //Filter out blocking values
+        private List<Vector3Int> FilterBlocking(IEnumerable<Vector3Int> curLayer)
+        {
+            float[,] maxHeight = new float[chunked.Size.X, chunked.Size.Y];
+            var activeVoxels = curLayer.Select(x => new Vector3Int(x.X, x.Y, 0)).Distinct().ToHashSet();
+
+            float curValue = 0;
+            foreach (var voxel in curLayer.GroupBy(x=>new Vector3Int(x.X,x.Y,0)))
             {
-                var check = x + LUTS.faceOffsets[i];
-                if (voxels.Contains(check) && voxels[check].Layer == 0)
+                maxHeight[voxel.Key.X, voxel.Key.Y] = voxel.Max(x => x.Z);
+                curValue = MathF.Max(curValue, maxHeight[voxel.Key.X,voxel.Key.Y]);
+            }
+
+            for (int x = 0; x < chunked.Size.X; x++)
+            {
+                for (int y = 0; y < chunked.Size.Y; y++)
                 {
-                    return true;
+                    if (activeVoxels.Contains(new Vector3Int(x,y,0)))
+                    {
+                        curValue = MathF.Min(curValue + zVoxelsPerX, maxHeight[x, y]);
+                    }
+                    else
+                    {
+                        curValue += zVoxelsPerX;
+                    }
+                    maxHeight[x, y] = curValue;
                 }
             }
-            return false;
+
+            for (int x = chunked.Size.X-1; x >= 0; x--)
+            {
+                for (int y = chunked.Size.Y-1; y >= 0; y--)
+                {
+                    if (activeVoxels.Contains(new Vector3Int(x, y, 0)))
+                    {
+                        curValue = MathF.Min(curValue + zVoxelsPerX, maxHeight[x, y]);
+                    }
+                    else
+                    {
+                        curValue += zVoxelsPerX;
+                    }
+                    maxHeight[x, y] = curValue;
+                }
+            }
+            for (int y = 0; y < chunked.Size.Y; y++)
+            {
+                for (int x = 0; x < chunked.Size.X; x++)
+                {
+                    if (activeVoxels.Contains(new Vector3Int(x, y, 0)))
+                    {
+                        curValue = MathF.Min(curValue + zVoxelsPerX, maxHeight[x, y]);
+                    }
+                    else
+                    {
+                        curValue += zVoxelsPerX;
+                    }
+                    maxHeight[x, y] = curValue;
+                }
+            }
+            for (int y = chunked.Size.Y - 1; y >= 0; y--)   
+            {
+                for (int x = chunked.Size.X - 1; x >= 0; x--)
+                {
+                    if (activeVoxels.Contains(new Vector3Int(x, y, 0)))
+                    {
+                        curValue = MathF.Min(curValue + zVoxelsPerX, maxHeight[x, y]);
+                    }
+                    else
+                    {
+                        curValue += zVoxelsPerX;
+                    }
+                    maxHeight[x, y] = curValue;
+                }
+            }
+
+            int countBeforeFilter = curLayer.Count();
+            var ret = curLayer.Where(x => maxHeight[x.X, x.Y] >= x.Z).ToList();
+            Debug.WriteLine($"{countBeforeFilter-ret.Count} voxels were above the slope limit");
+            return ret;
         }
     }
 }

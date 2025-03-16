@@ -16,5 +16,12 @@ namespace Models
             new Vector3Int(0, -1, 0),
             new Vector3Int(0, 0, 1),
         };
+        public static List<Vector3Int> neighbours = new List<Vector3Int>() {
+            new Vector3Int(1, 0, 0),
+            new Vector3Int(0, 1, 0),
+            new Vector3Int(-1, 0, 0),
+            new Vector3Int(0, -1, 0),
+            new Vector3Int(0, 0, 1),
+        };
     }
 }

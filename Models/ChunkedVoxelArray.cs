@@ -22,12 +22,12 @@ namespace Models
                     {
                         for (int j = 0; j < chunkSize; j++)
                         {
-                            var pos = new Vector3Int(x + i, y + j, z);
+                            var pos = new Vector3Int(x * chunkSize + i, y * chunkSize + j, z);
                             if (fullResArray.Contains(pos))
                             {
                                 var voxel = fullResArray[pos];
                                 voxel.Layer = value.Layer;
-                                chunks[x,y,z] = voxel;
+                                fullResArray[pos] = voxel;
                             }
                         }
                     }
@@ -42,24 +42,23 @@ namespace Models
         public Vector3 LowerLeft { get => lowerLeft; set => lowerLeft = value; }
         private int layerCount;
         public int LayerCount { get => layerCount; set => layerCount = value; }
-        public ChunkedVoxelArray(IVoxelCollection fullResArray)
+        public ChunkedVoxelArray(IVoxelCollection fullResArray,int chunkSize)
         {
             this.fullResArray = fullResArray;
             lowerLeft = fullResArray.LowerLeft;
 
-            chunkSize = (int)(Settings.Resolution.X / Settings.NozzleDiameter);
-            size = fullResArray.Size / chunkSize;
-            size.Z = fullResArray.Size.Z;
+            this.chunkSize = chunkSize;
+            size = new Vector3Int((int)MathF.Ceiling(fullResArray.Size.X / (float)chunkSize), (int)MathF.Ceiling(fullResArray.Size.Y / (float)chunkSize), fullResArray.Size.Z);
 
             chunks = new VoxelData[size.X, size.Y, size.Z];
 
-            for (int i = 0; i < size.X; i++)
+            var tasks = Enumerable.Range(0, Size.X).Select(i => Task.Run(() =>
             {
                 for (int j = 0; j < size.Y; j++)
                 {
                     for (int k = 0; k < size.Z; k++)
                     {
-                        if (IsChunkActive(new Vector3Int(i,j,k)))
+                        if (IsChunkActive(new Vector3Int(i, j, k)))
                         {
                             this[i, j, k] = VoxelData.GetSolid();
                         }
@@ -69,7 +68,8 @@ namespace Models
                         }
                     }
                 }
-            }
+            }));
+            Task.WaitAll(tasks.ToArray());
         }
 
         private bool IsChunkActive(Vector3Int id)
@@ -78,7 +78,7 @@ namespace Models
             {
                 for (int j = 0; j < chunkSize; j++)
                 {
-                    if (fullResArray.Contains(id + new Vector3Int(i, j, 0)))
+                    if (fullResArray.Contains(new Vector3Int(i + id.X*chunkSize, j + id.Y * chunkSize, id.Z)))
                     {
                         return true;
                     }

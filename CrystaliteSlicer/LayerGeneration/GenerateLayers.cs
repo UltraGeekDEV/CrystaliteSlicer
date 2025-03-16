@@ -95,17 +95,80 @@ namespace CrystaliteSlicer.LayerGeneration
 
         private void InitCheckHeight(int[,] checkHeight)
         {
-            activeEdge.AsParallel().SelectMany(CheckAttached).Distinct().GroupBy(x => new Vector3Int(x.X, x.Y)).ForAll(x =>
+            var traversalLUT = new List<Vector3Int>();
+            //Get the offsets that are valid for a circle
+            for (int x = -nozzleSize.X; x <= nozzleSize.X; x++)
             {
-                if (height[x.Key.X, x.Key.Y].maxZ == 0)
+                for (int y = -nozzleSize.Y; y <= nozzleSize.Y; y++)
                 {
-                    checkHeight[x.Key.X, x.Key.Y] = x.Max(x => x.Z);
+                    var offset = new Vector3Int(x, y, 0);
+                    if (offset.Magnitude() <= nozzleSize.X)
+                    {
+                        traversalLUT.Add(offset);
+                    }
                 }
-                else
+            }
+
+            var activeCheck = new int[voxels.Size.X, voxels.Size.Y];
+
+            foreach(var voxel in activeEdge.AsParallel())
+            {
+                activeCheck[voxel.X, voxel.Y] = voxel.Z;
+            }
+
+            var tasks = Enumerable.Range(0, voxels.Size.X).Select(x => Task.Run(() =>
+            {
+                for (int y = 0; y < voxels.Size.Y; y++)
                 {
-                    checkHeight[x.Key.X, x.Key.Y] = height[x.Key.X, x.Key.Y].maxZ;
+                    var neighbours = traversalLUT.Select(offset => offset + new Vector3Int(x, y)).Where(check => voxels.WithinBounds(check) && activeCheck[check.X, check.Y] != 0).ToList();
+                    if (neighbours.Count > 0)
+                    {
+                        int fromZ;
+
+                        if (height[x,y].maxZ == 0)
+                        {
+                            fromZ = neighbours.Min(check => activeCheck[check.X, check.Y]);
+                        }
+                        else
+                        {
+                            fromZ = height[x, y].maxZ;
+                        }
+
+                        var toZ = neighbours.Max(check => activeCheck[check.X, check.Y]) + maxLayerThickness;
+                        int maxZ = 0;
+
+                        for (int z = fromZ; z <= toZ; z++)
+                        {
+                            if (voxels.Contains(new Vector3Int(x, y, z)) && voxels[x, y, z].Layer == 0)
+                            {
+                                maxZ = z;
+                            }
+                        }
+
+                        if (height[x, y].maxZ == 0)
+                        {
+                            checkHeight[x, y] = maxZ;
+                        }
+                        else
+                        {
+                            checkHeight[x, y] = height[x, y].maxZ;
+                        }
+                    }
                 }
-            });
+            })).ToArray();
+            Task.WaitAll(tasks);
+
+            //activeEdge.AsParallel().SelectMany(CheckAttached).Distinct().GroupBy(x => new Vector3Int(x.X, x.Y)).ForAll(x =>
+            //{
+            //    if (height[x.Key.X, x.Key.Y].maxZ == 0)
+            //    {
+            //        checkHeight[x.Key.X, x.Key.Y] = x.Max(x => x.Z);
+            //    }
+            //    else
+            //    {
+            //        checkHeight[x.Key.X, x.Key.Y] = height[x.Key.X, x.Key.Y].maxZ;
+            //    }
+            //});
         }
         private void GetMaxHeight(int[,] checkHeight)
         {

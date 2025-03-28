@@ -17,7 +17,7 @@ namespace CrystaliteSlicer.LayerGeneration
         Vector3Int nozzleSize;
         int maxLayerThickness;
         IVoxelCollection voxels;
-        IVoxelCollection chunked;
+        ChunkedVoxelArray chunked;
 
         float zVoxelsPerX;
         int curLayer = 1;
@@ -35,6 +35,7 @@ namespace CrystaliteSlicer.LayerGeneration
             chunked = new ChunkedVoxelArray(voxels, nozzleSize.X);
 
             neighbours = LUTS.neighbours.ToList();
+
             for (int i = 1; i < maxLayerThickness; i++)
             {
                 neighbours.Add(new Vector3Int(0, 0, i + 1));
@@ -172,7 +173,7 @@ namespace CrystaliteSlicer.LayerGeneration
                 {
                     if (activeVoxels.Contains(new Vector3Int(x, y, 0)))
                     {
-                        curValue = MathF.Min(curValue + zVoxelsPerX, maxHeight[x, y]);
+                        curValue = MathF.Min(curValue + 1 + zVoxelsPerX, maxHeight[x, y]);
                     }
                     else
                     {

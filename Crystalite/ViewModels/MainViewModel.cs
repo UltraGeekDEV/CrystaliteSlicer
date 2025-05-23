@@ -1,6 +1,7 @@
 ﻿using Crystalite.Utils;
 using Models;
 using Newtonsoft.Json;
+using ReactiveUI;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -8,8 +9,11 @@ using System.Reflection;
 
 namespace Crystalite.ViewModels;
 
-public class MainViewModel : ViewModelBase
+public class MainViewModel : ReactiveObject
 {
+    public bool HasGCode { get => hasGCode; set => this.RaiseAndSetIfChanged(ref hasGCode, value); }
+
+    private bool hasGCode;
     public MainViewModel()
     {
         LoadSettings();

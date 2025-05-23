@@ -1,9 +1,12 @@
-﻿using Avalonia.Controls;
+﻿using Assimp;
+using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.ReactiveUI;
 using Crystalite.Utils;
 using Crystalite.ViewModels;
+using ReactiveUI;
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -14,7 +17,9 @@ public partial class MainView : UserControl
 {
     public MainView()
     {
-        DataContext = new MainViewModel();
+        var vm = new MainViewModel();
+        DataContext = vm;
+        Slicer.OnGCodeAvailabilityChanged += () => { vm.HasGCode = Slicer.HasToolpath; };
         InitializeComponent();
     }
     public void Slice_Button_Click(object sender, RoutedEventArgs args)

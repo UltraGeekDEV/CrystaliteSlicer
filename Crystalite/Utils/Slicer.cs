@@ -14,6 +14,7 @@ using CrystaliteSlicer.Postprocessing;
 using CrystaliteSlicer.ToolpathGeneration;
 using CrystaliteSlicer.Voxelize;
 using Models;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -47,6 +48,7 @@ namespace Crystalite.Utils
             }}
         private static bool isSlicing;
         public static bool HasToolpath { get { return toolpath != null && toolpath.Count() > 0; } }
+        public static Action OnGCodeAvailabilityChanged;
         public static void Setup()
         {
             IsSlicing = false;
@@ -221,12 +223,13 @@ namespace Crystalite.Utils
         internal static void Slice()
         {
             IsSlicing = true;
+            toolpath = null;
+            OnGCodeAvailabilityChanged?.Invoke();
             MainViewModel.SaveSettings();
             if (MeshData.instance.models.Count == 0)
             {
                 return;
             }
-
             var meshes = MeshData.instance.models.SelectMany(x => x.GetPrintspacetriangles().Select(y => Reorient(y)));
             //Voxelize
             IVoxelCollection voxels = new Voxelizer().Voxelize(meshes);
@@ -249,6 +252,7 @@ namespace Crystalite.Utils
             toolpath = new SafeTravel().Process(toolpath);
             toolpath = new PurgeLine().Process(toolpath);
             IsSlicing = false;
+            OnGCodeAvailabilityChanged?.Invoke();
         }
 
         internal static void SaveGCode(string path)

@@ -81,7 +81,7 @@ namespace Models
                     var voxelLine = Bresenham3D(zGroup[j][i], zGroup[j][i + 1]);
                     for (int k = 0; k < voxelLine.Count; k++)
                     {
-                        voxels[voxelLine[k]] = new VoxelData() { Depth = 1 };
+                        voxels[voxelLine[k]] = new VoxelData() { ZDepth = 1 };
                     }
                 }
             }
@@ -95,7 +95,7 @@ namespace Models
                     var voxelLine = Bresenham3D(xGroup[j][i], xGroup[j][i + 1]);
                     for (int k = 0; k < voxelLine.Count; k++)
                     {
-                        voxels[voxelLine[k]] = new VoxelData() { Depth = 1 };
+                        voxels[voxelLine[k]] = new VoxelData() { ZDepth = 1 };
                     }
                 }
             }
@@ -109,7 +109,7 @@ namespace Models
                     var voxelLine = Bresenham3D(yGroup[j][i], yGroup[j][i + 1]);
                     for (int k = 0; k < voxelLine.Count; k++)
                     {
-                        voxels[voxelLine[k]] = new VoxelData() { Depth = 1 };
+                        voxels[voxelLine[k]] = new VoxelData() { ZDepth = 1 };
                     }
                 }
             }

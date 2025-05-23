@@ -117,119 +117,38 @@ namespace CrystaliteSlicer.ToolpathGeneration
             int width = layer.GetLength(0);
             int depth = layer.GetLength(1);
 
-            int[,] df = new int[width, depth];
             List<Vector3Int>[] points = new List<Vector3Int>[depth];
 
-            var tasks = Enumerable.Range(0, width).Select(x => Task.Run(() =>
-            {
-                int curDist = int.MinValue;
-                for (int y = 0; y < depth; y++)
-                {
-                    if (layer[x, y].height != 0)
-                    {
-                        if (curDist < 0)
-                        {
-                            curDist = 0;
-                        }
-                        else
-                        {
-                            curDist++;
-                        }
-                    }
-                    else
-                    {
-                        curDist = int.MinValue;
-                    }
-
-                    df[x, y] = curDist;
-                }
-                for (int y = depth - 1; y >= 0; y--)
-                {
-                    if (layer[x, y].height != 0)
-                    {
-                        if (curDist < 0)
-                        {
-                            curDist = 0;
-                        }
-                        else
-                        {
-                            curDist = Math.Min(++curDist, df[x, y]);
-                        }
-                    }
-                    else
-                    {
-                        curDist = int.MinValue;
-                    }
-
-                    df[x, y] = curDist;
-                }
-            })).ToArray();
-            Task.WaitAll(tasks);
-            tasks = Enumerable.Range(0, depth).Select(y => Task.Run(() =>
+            var tasks = Enumerable.Range(0, depth).Select(y => Task.Run(() =>
             {
                 points[y] = new List<Vector3Int>();
-                int curDist = int.MinValue;
                 for (int x = 0; x < width; x++)
                 {
-                    if (layer[x, y].height != 0)
-                    {
-                        if (curDist < 0)
+                    if (layer[x,y].height != 0) {
+                        bool isLine = IsLine(x, y, layer[x, y].height);
+                        bool isShell = IsShell(x, y, layer[x, y].height);
+                        bool isFill = infillPattern.IsFill(voxels[x, y, layer[x, y].height].XYDepth, voxels[x, y, layer[x, y].height].ZDepth, x, y, layer[x, y].height);
+                        if (isLine || (!isShell && isFill))
                         {
-                            curDist = 0;
+                            points[y].Add(new Vector3Int(x, y, layer[x, y].height));
                         }
-                        else
-                        {
-                            curDist = Math.Min(++curDist, df[x, y]);
-                        }
-                    }
-                    else
-                    {
-                        curDist = int.MinValue;
-                    }
-
-                    df[x, y] = curDist;
-                }
-                curDist = int.MinValue;
-                for (int x = width - 1; x >= 0; x--)
-                {
-                    if (layer[x, y].height != 0)
-                    {
-                        if (curDist < 0)
-                        {
-                            curDist = 0;
-                        }
-                        else
-                        {
-                            curDist = Math.Min(++curDist, df[x, y]);
-                        }
-                    }
-                    else
-                    {
-                        curDist = int.MinValue;
-                    }
-
-                    df[x, y] = curDist;
-
-                    bool isLine = IsLine(curDist, x, y, layer[x, y].height);
-                    bool isShell = IsShell(curDist, x, y, layer[x, y].height);
-                    bool isFill = infillPattern.IsFill(curDist, voxels[x, y, layer[x, y].height].Depth, x, y, layer[x, y].height);
-                    if (isLine || (!isShell && isFill))
-                    {
-                        points[y].Add(new Vector3Int(x, y, layer[x, y].height));
                     }
                 }
+               
             })).ToArray();
             Task.WaitAll(tasks);
-            var curLayer = points.AsParallel().SelectMany(x => x).ToDictionary(x => new Vector3Int(x.X, x.Y), x => (x.Z, layer[x.X, x.Y].thickness, Math.Min(df[x.X, x.Y] / nozzleVoxelSize,Settings.WallCount)));
+            var curLayer = points.AsParallel().SelectMany(x => x).ToDictionary(x => new Vector3Int(x.X, x.Y), x => (x.Z, layer[x.X, x.Y].thickness, Math.Min(voxels[x.X,x.Y,layer[x.X, x.Y].height].XYDepth / nozzleVoxelSize,Settings.WallCount)));
             layers.Add(curLayer);
         }
-        private bool IsLine(int value, int x, int y, int z)
+        private bool IsLine(int x, int y, int z)
         {
-            return Math.Abs((value % nozzleVoxelSize) - halfNozzleVoxelSize) == 0 && value >= 0 && IsShell(value,x,y,z);
+            var value = voxels[x, y, z].XYDepth;
+            return Math.Abs((value % nozzleVoxelSize) - halfNozzleVoxelSize) == 0 && value >= 0 && IsShell(x,y,z);
         }
-        private bool IsShell(int value, int x, int y, int z)
+        private bool IsShell(int x, int y, int z)
         {
-            return value / nozzleVoxelSize < Settings.WallCount || voxels[x, y, z].Depth < topThickness;
+            var value = voxels[x, y, z].XYDepth;
+            return value / nozzleVoxelSize < Settings.WallCount || voxels[x, y, z].ZDepth < topThickness;
         }
         public IEnumerable<Line> GetPath()
         {
@@ -309,7 +228,7 @@ namespace CrystaliteSlicer.ToolpathGeneration
                 }
 
 
-                retPath.Add(new Line(new Vector3(cur.Key.X, cur.Key.Y, cur.Value.height+1f) * Settings.Resolution+voxels.LowerLeft, new Vector3(pick.Key.X, pick.Key.Y, pick.Value.height + 1f) * Settings.Resolution + voxels.LowerLeft
+                retPath.Add(new Line(new Vector3(cur.Key.X, cur.Key.Y, cur.Value.height+1f) * Settings.Resolution-new Vector3(0,0,0.2f)+voxels.LowerLeft, new Vector3(pick.Key.X, pick.Key.Y, pick.Value.height + 1f) * Settings.Resolution - new Vector3(0, 0, 0.2f) + voxels.LowerLeft
                     , (cur.Value.thickness+pick.Value.thickness)*0.5f,Math.Abs(pick.Key.X-cur.Key.X) > 1 || Math.Abs(pick.Key.Y - cur.Key.Y) > 1));
                 cur = pick;
                 pointData.Remove(cur.Key);

@@ -67,16 +67,16 @@ namespace CrystaliteSlicer.Voxelize
                 for (int j = 0; j < voxels.Size.Y; j+= seedSpacing)
                 {
                     Vector3Int check = new Vector3Int(x * seedSpacing, j, 0);
-                    if (voxels[check].Depth != shellVoxelValue)
+                    if (voxels[check].ZDepth != shellVoxelValue)
                     {
                         ret.Add(check);
-                        voxels[check] = new VoxelData() { Depth = -1 };
+                        voxels[check] = VoxelData.GetAir();
                     }
                     check.Z = voxels.Size.Z - 1;
-                    if (voxels[check].Depth != shellVoxelValue)
+                    if (voxels[check].ZDepth != shellVoxelValue)
                     {
                         ret.Add(check);
-                        voxels[check] = new VoxelData() { Depth = -1 };
+                        voxels[check] = VoxelData.GetAir();
                     }
                 }
                 return ret;
@@ -107,40 +107,32 @@ namespace CrystaliteSlicer.Voxelize
             {
                 for (int y = 0; y < voxels.Size.Y; y++)
                 {
-                    int dist = int.MinValue;
+                    int dist = 0;
                     for (int z = 0; z < voxels.Size.Z; z++)
                     {
-                        if (voxels[x, y, z].Depth == -1)
+                        if (voxels[x, y, z].ZDepth == -1)
                         {
-                            dist = int.MinValue;
+                            dist = 0;
                         }
                         else
                         {
-                            if (dist == int.MinValue)
-                            {
-                                dist = 0;
-                            }
                             var voxel = voxels[x, y, z];
-                            voxel.Depth = dist++;
+                            voxel.ZDepth = dist++;
                             voxels[x, y, z] = voxel;
                         }
                     }
-                    dist = int.MinValue;
-                    for (int z = voxels.Size.Z - 1; z > 0; z--)
+                    dist = 0;
+                    for (int z = voxels.Size.Z - 1; z >= 0; z--)
                     {
-                        if (voxels[x, y, z].Depth == -1)
+                        if (voxels[x, y, z].ZDepth == -1)
                         {
-                            dist = int.MinValue;
+                            dist = 0;
                         }
                         else
                         {
-                            if (dist == int.MinValue)
-                            {
-                                dist = 0;
-                            }
                             var voxel = voxels[x, y, z];
-                            dist = Math.Min(dist, voxel.Depth);
-                            voxel.Depth = dist;
+                            dist = Math.Min(dist, voxel.ZDepth);
+                            voxel.ZDepth = dist;
                             dist++;
                             voxels[x, y, z] = voxel;
                         }
@@ -150,9 +142,71 @@ namespace CrystaliteSlicer.Voxelize
 
             Task.WaitAll(sdfTasks);
 
+            sdfTasks = Enumerable.Range(0, voxels.Size.Z).Select(z => Task.Run(() =>
+            {
+                for (int y = 0; y < voxels.Size.Y; y++)
+                {
+                    int dist = 0;
+                    for (int x = 0; x < voxels.Size.X; x++)
+                    {
+                        if (voxels[x, y, z].XYDepth == -1)
+                        {
+                            dist = 0;
+                        }
+                        else
+                        {
+                            var voxel = voxels[x, y, z];
+                            voxel.XYDepth = dist++;
+                            voxels[x, y, z] = voxel;
+                        }
+                    }
+                    dist = 0;
+                    for (int x = voxels.Size.X - 1; x >= 0; x--)
+                    {
+                        SetAndIncreaseDist(ref dist, voxels, x, y, z);
+                    }
+                }
+            })).ToArray();
+
+            Task.WaitAll(sdfTasks);
+            sdfTasks = Enumerable.Range(0, voxels.Size.Z).Select(z => Task.Run(() =>
+            {
+                for (int x = 0; x < voxels.Size.X; x++)
+                {
+                    int dist = 0;
+                    for (int y = 0; y < voxels.Size.Y; y++)
+                    {
+                        SetAndIncreaseDist(ref dist, voxels, x, y, z);
+                    }
+                    dist = 0;
+                    for (int y = voxels.Size.Y - 1; y >= 0; y--)
+                    {
+                        SetAndIncreaseDist(ref dist, voxels, x, y, z);
+                    }
+                }
+            })).ToArray();
+
+            Task.WaitAll(sdfTasks);
+
             return voxels;
         }
-        
+
+        private static void SetAndIncreaseDist(ref int dist, IVoxelCollection voxels, int x, int y, int z)
+        {
+            if (voxels[x, y, z].XYDepth == -1)
+            {
+                dist = 0;
+            }
+            else
+            {
+                var voxel = voxels[x, y, z];
+                dist = Math.Min(dist, voxel.XYDepth);
+                voxel.XYDepth = dist;
+                dist++;
+                voxels[x, y, z] = voxel;
+            }
+        }
+
         private List<Vector3Int> GetNeighbours(Vector3Int check, IVoxelCollection voxels)
         {
             var ret = new List<Vector3Int>();
@@ -162,12 +216,12 @@ namespace CrystaliteSlicer.Voxelize
                 var pos = check + LUTS.faceOffsets[i];
                 if (voxels.WithinBounds(pos))
                 {
-                    var value = voxels[pos].Depth;
-                    if (value != -1 )
+                    var voxel = voxels[pos];
+                    if (!voxel.IsAir() )
                     {
-                        if (value != shellVoxelValue)
+                        if (voxel.ZDepth != shellVoxelValue)
                         {
-                            voxels[pos] = new VoxelData() { Depth = -1 };
+                            voxels[pos] = VoxelData.GetAir();
                             ret.Add(pos);
                         }
                         else
@@ -189,9 +243,9 @@ namespace CrystaliteSlicer.Voxelize
             {
                 for (int z = 0; z < voxels.Size.Z; z++)
                 {
-                    if (voxels[x,y,z].Depth != shellVoxelValue)
+                    if (voxels[x,y,z].ZDepth != shellVoxelValue)
                     {
-                        voxels[x, y, z] = new VoxelData() { Depth = fillVoxelValue };
+                        voxels[x, y, z] = VoxelData.GetSolid();
                     }
                 }
             }

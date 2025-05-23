@@ -30,9 +30,26 @@ namespace Crystalite.Utils
     {
         private static MeshData models = new MeshData();
         private static Mesh buildPlate = new Mesh();
+        private static IEnumerable<Line> toolpath;
 
+        private static object isSlicingLock = new object();
+        public static bool IsSlicing { get {
+                lock (isSlicingLock)
+                {
+                    return isSlicing;
+                }
+            }
+        private set {
+                lock(isSlicingLock)
+                {
+                    isSlicing = value;
+                }
+            }}
+        private static bool isSlicing;
+        public static bool HasToolpath { get { return toolpath != null && toolpath.Count() > 0; } }
         public static void Setup()
         {
+            IsSlicing = false;
             ConstructBuildPlate();
             Addhandles();
             Sun.Setup();
@@ -201,8 +218,9 @@ namespace Crystalite.Utils
             return tris;
         }
 
-        internal async static void Slice()
+        internal static void Slice()
         {
+            IsSlicing = true;
             MainViewModel.SaveSettings();
             if (MeshData.instance.models.Count == 0)
             {
@@ -218,19 +236,25 @@ namespace Crystalite.Utils
             Debug.WriteLine("Generated Layers");
             //Get Toolpath and Apply Infill
             IInfill infill = new GridInfill();
-            var toolpath = new NearestNeighborToolpath(voxels,infill).SplitLayers(voxels).GetPath();
+            toolpath = new NearestNeighborToolpath(voxels,infill).SplitLayers(voxels).GetPath();
             Debug.WriteLine("Toolpath Generated");
             Settings.SmoothingAngle = 0.2f;
             Settings.SmoothingCount = 1;
 
             toolpath = new SmoothPath().Process(toolpath);
-            Settings.SmoothingCount = 6;
+            Settings.SmoothingCount = 3;
             Settings.SmoothingAngle = 0.75f;
             toolpath = new SmoothPath().Process(toolpath);
             toolpath = new PathFiller().Process(toolpath);
             toolpath = new SafeTravel().Process(toolpath);
             toolpath = new PurgeLine().Process(toolpath);
-            File.WriteAllLines( "./Test.gcode", new MarlinGCodeGenerator().GetGcode(toolpath.ToList()));
+            IsSlicing = false;
+        }
+
+        internal static void SaveGCode(string path)
+        {
+
+            File.WriteAllLines(path, new MarlinGCodeGenerator().GetGcode(toolpath.ToList()));
         }
 
         private static Triangle Reorient(Triangle triangle)

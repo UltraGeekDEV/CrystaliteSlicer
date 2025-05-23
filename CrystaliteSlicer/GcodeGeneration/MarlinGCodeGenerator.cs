@@ -25,6 +25,11 @@ namespace CrystaliteSlicer.GcodeGeneration
             float travelFeedrate = Settings.TravelSpeed * 60;
             float retractFeedrate = Settings.RetractionSpeed * 60;
 
+            ret.Add("M82"); //absolute extrusion
+            ret.Add("G92 E0"); //reset extruder
+            ret.Add("G28"); //home
+
+            //ret.Add("BED_MESH_PROFILE load=default"); //##########REMOVE#################
             ret.Add($"M140 S{Settings.BedTemp}");
             ret.Add($"M105");
             ret.Add($"M190 S{Settings.BedTemp}");
@@ -32,13 +37,6 @@ namespace CrystaliteSlicer.GcodeGeneration
             ret.Add($"M105");
             ret.Add($"M109 S{Settings.HotendTemp}");
             ret.Add($"M106 S{(int)(Settings.FanSpeed * 255)}");
-
-            ret.Add("M82"); //absolute extrusion
-            ret.Add("G92 E0"); //reset extruder
-            ret.Add("G28"); //home
-
-            //ret.Add("BED_MESH_PROFILE load=default"); //##########REMOVE#################
-
 
             ret.Add($"G0 F{travelFeedrate}");
 

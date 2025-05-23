@@ -31,7 +31,7 @@ namespace Models
         }
         public bool Contains(Vector3Int id)
         {
-            return WithinBounds(id) && this[id].Depth != -1;
+            return WithinBounds(id) && !this[id].IsAir();
         }
 
 

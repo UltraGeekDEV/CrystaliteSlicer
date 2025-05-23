@@ -32,7 +32,7 @@ namespace Models
         }
         public bool Contains(Vector3Int id)
         {
-            return WithinBounds(id) && this[id].Depth != IVoxelCollection.airVoxel;
+            return WithinBounds(id) && !this[id].IsAir();
         }
 
         public IEnumerable<Vector3Int> GetAllActiveVoxels()

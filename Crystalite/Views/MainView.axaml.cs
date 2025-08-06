@@ -38,6 +38,8 @@ public partial class MainView : UserControl
             {
                 Title = "Save G-code",
                 DefaultExtension = "gcode",
+                SuggestedFileName = "output.gcode",
+                
             });
 
             if (filePath != null)

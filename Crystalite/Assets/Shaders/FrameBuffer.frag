@@ -32,7 +32,7 @@ float kernelY[9] = float[](
 vec4 blurredGooch[9];
 vec4 blurredNorm[9];
 
-const int blurRadius = 1;
+const int blurRadius = 2;
 
 void main(){
     float pixelX = 1.0f/width;
@@ -45,7 +45,7 @@ void main(){
     vec4 goochX = vec4(0);
     vec4 goochY = vec4(0);
 
-    vec4 goochCol = vec4(0.6f,0.6f,0.55f,1.0f);
+    vec4 goochCol = vec4(0.9f,0.9f,0.85f,1.0f);
 
     float blurWeight = 1.0f / pow(float(2*blurRadius + 1),2.0f);
 
@@ -69,10 +69,10 @@ void main(){
         goochY += blurredNorm[i]*kernelY[i];
     }
 
-    if(length(colX)+length(colY) > 4.0f){
-        FragColor = vec4(1.0f,1.0f,0.8f,1.0f);
+    if(length(colX)+length(colY) > 2.0f){
+        FragColor = vec4(0.6f,1.0f,0.6f,1.0f);
     }
-    else if(abs(goochX.w)+abs(goochY.w) > 0.8f || length(goochX.xyz) + length(goochY.xyz) > 1.0f){
+    else if(abs(goochX.w)+abs(goochY.w) > 0.075f || length(goochX.xyz) + length(goochY.xyz) > 0.7f){
         FragColor = goochCol;
     }
     else{

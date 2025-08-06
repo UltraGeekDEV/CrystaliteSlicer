@@ -1,7 +1,7 @@
 # Crystalite - A demo of V-Slicing in action
 
 ## Experimental non-planar slicer!
-Crystalite is an experimental slicer that implements variable-angle slicing—ideal for machines with enough hotend clearance and without overly aggressive collision protection.
+Crystalite is an experimental slicer that implements variable-angle slicing, ideal for machines with enough hotend clearance and without overly aggressive collision protection.
 
 It currently works best with printers like the original Ender 3 (at least 10° slope clearance recommended). Printers with auto nozzle cleaning or tight overhang limits (e.g., Bambu A1) may struggle or even risk collisions.
 

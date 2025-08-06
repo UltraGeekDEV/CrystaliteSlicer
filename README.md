@@ -35,7 +35,7 @@ Transform handles let you grab axes and move or rotate models, with mouse moveme
 
 You can drag and drop models into the scene, though deleting them isn’t supported yet(sorry, but you'll have to restart the app).
 
-## The generated GCode
+## The generated G-code
 
 Since Crystalite doesn’t have a built-in GCode viewer yet, you’ll need to open the output in your slicer of choice to inspect before printing. Be warned: the slicer can behave weirdly sometimes, like slicing models mid-air (and not the cool kind).
 

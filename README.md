@@ -8,9 +8,9 @@ It currently works best with printers like the original Ender 3 (at least 10° s
 This is an early-stage demo. It can crash on large models or misbehave with weird geometry. Always double-check G-code with your preferred viewer before printing-Crystalite doesn’t include one yet.
 
 ## V-Slicing
-V-Slicing is a slicing technique I developed that generates layers which adapt to the model's shape. These layers can bend and vary in thickness -even within a single layer- to closely follow the geometry, effectively eliminating stair-stepping and enabling clean horizontal (and even slightly inverted) overhangs.
+V-Slicing is a slicing technique I developed that generates layers which adapt to the model's shape. These layers can bend and vary in thickness -even within a single layer- to closely follow the geometry, effectively eliminating stair-stepping and enabling clean horizontal overhangs.
 
-The model is first converted into a voxel-based occupancy map. From that, adaptive layers are generated wherever plastic can be deposited with contact to existing geometry—not necessarily “from below,” just with enough adjacent surface. Toolpaths follow these layers exactly.
+The model is first converted into a voxel-based occupancy map. From that, adaptive layers are generated wherever plastic can be deposited with contact to existing geometry-not necessarily “from below,” just with enough adjacent surface. Toolpaths follow these layers exactly.
 
 This approach is a complete departure from traditional slicing (and even most non-planar variants), which still rely on planar slicing of a distorted model. V-Slicing skips that entirely by slicing in voxel space directly.
 
@@ -19,7 +19,7 @@ It’s not perfect yet -toolpaths still come straight from the voxel data, which
 ## The UI
 Crystalite’s UI was built for tinkerers who want bleeding-edge slicing without wrestling a terminal. 
 
-The name comes from the crystal-like patterns V-Slicing generates when slicing solids at steep angles—a visual metaphor baked into the app.
+The name comes from the crystal-like patterns V-Slicing generates when slicing solids at steep angles-a visual metaphor baked into the app.
 
 I started with WPF’s 3D viewport, but it struggled even on modest triangle counts and with dynamic model transforms (you have to rebuild all triangles on every move causing painful lag spikes and horrible UX). So I switched to Avalonia for its cross-platform support, OpenGL integration, and near-identical syntax.
 
@@ -33,7 +33,7 @@ Transform handles let you grab axes and move or rotate models, with mouse moveme
 
 <img width="480" height="489" alt="CrystaliteUIHandlesDemo" src="https://github.com/user-attachments/assets/32cf6ed2-7cde-41f2-aefc-607210b57d6f" />
 
-You can drag and drop models into the scene, though deleting them isn’t supported yet(soory, but you'll have to restart the app).
+You can drag and drop models into the scene, though deleting them isn’t supported yet(sorry, but you'll have to restart the app).
 
 ## The generated GCode
 

@@ -53,4 +53,4 @@ While not perfect, the horizontal overhang printed with minimal warping (note: t
 
 <img width="1200" height="800" alt="OverhangDemo" src="https://github.com/user-attachments/assets/687e7de9-2753-4b77-ab08-e63337463547" />
 
-For further details on V-Slicing, pelase check out my blog at <a href="https://www.geekworksresearch.com">GeekworksResearch.com</a>, not all 
+For further details on V-Slicing, pelase check out my blog at <a href="https://www.geekworksresearch.com">GeekworksResearch.com</a>. I will be posting further devlogs about the remaining steps, but I didn't want to share posts explaining how a certain stage works, until I made sure it was working, and so when I got stuck at layer generation not being reliable enough I stopped making the blog posts. I will also be splitting them into two parts, a part that is more technical and a part that explains it in a more approcahable way, since I didn't like the awkward inbetween tone of the first few devlogs.

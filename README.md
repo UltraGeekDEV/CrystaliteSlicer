@@ -5,7 +5,7 @@ Crystalite is an experimental slicer that implements variable-angle slicing—id
 
 It currently works best with printers like the original Ender 3 (at least 10° slope clearance recommended). Printers with auto nozzle cleaning or tight overhang limits (e.g., Bambu A1) may struggle or even risk collisions.
 
-This is an early-stage demo. It can crash on large models or misbehave with weird geometry. Always double-check G-code with your preferred viewer before printing—Crystalite doesn’t include one yet.
+This is an early-stage demo. It can crash on large models or misbehave with weird geometry. Always double-check G-code with your preferred viewer before printing-Crystalite doesn’t include one yet.
 
 ## V-Slicing
 V-Slicing is a slicing technique I developed that generates layers which adapt to the model's shape. These layers can bend and vary in thickness -even within a single layer- to closely follow the geometry, effectively eliminating stair-stepping and enabling clean horizontal (and even slightly inverted) overhangs.

@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.ReactiveUI;
+using Avalonia.Threading;
 using Crystalite.Utils;
 using Crystalite.ViewModels;
 using ReactiveUI;
@@ -19,7 +20,8 @@ public partial class MainView : UserControl
     {
         var vm = new MainViewModel();
         DataContext = vm;
-        Slicer.OnGCodeAvailabilityChanged += () => { vm.HasGCode = Slicer.HasToolpath; };
+        // Slicing runs on a worker thread; bound properties must change on the UI thread.
+        Slicer.OnGCodeAvailabilityChanged += () => Dispatcher.UIThread.Post(() => vm.HasGCode = Slicer.HasToolpath);
         InitializeComponent();
     }
     public void Slice_Button_Click(object sender, RoutedEventArgs args)

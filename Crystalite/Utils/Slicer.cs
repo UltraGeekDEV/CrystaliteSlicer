@@ -12,6 +12,7 @@ using CrystaliteSlicer.LayerGeneration;
 using CrystaliteSlicer.MeshImport;
 using CrystaliteSlicer.Postprocessing;
 using CrystaliteSlicer.ToolpathGeneration;
+using CrystaliteSlicer.V2;
 using CrystaliteSlicer.Voxelize;
 using Models;
 using Newtonsoft.Json.Linq;
@@ -225,34 +226,34 @@ namespace Crystalite.Utils
             IsSlicing = true;
             toolpath = null;
             OnGCodeAvailabilityChanged?.Invoke();
-            MainViewModel.SaveSettings();
-            if (MeshData.instance.models.Count == 0)
+            try
             {
-                return;
+                MainViewModel.SaveSettings();
+                if (MeshData.instance.models.Count == 0)
+                {
+                    return;
+                }
+                var meshes = MeshData.instance.models.SelectMany(x => x.GetPrintspacetriangles().Select(y => Reorient(y))).ToList();
+                var result = new VSlicer(SliceOptions.FromSettings()).Slice(meshes);
+                Debug.WriteLine($"Sliced {result.LayerCount} layers; {result.Timings}");
+                if (result.Stalled)
+                {
+                    Debug.WriteLine($"Could not print {result.UnprintedVolume:F1} of {result.ModelVolume:F1} mm³:\n  " + string.Join("\n  ", result.Unfinished));
+                }
+                if (result.Path.Count > 0)
+                {
+                    toolpath = new PurgeLine().Process(result.Path).ToList();
+                }
             }
-            var meshes = MeshData.instance.models.SelectMany(x => x.GetPrintspacetriangles().Select(y => Reorient(y)));
-            //Voxelize
-            IVoxelCollection voxels = new Voxelizer().Voxelize(meshes);
-            Debug.WriteLine("Voxelized");
-            //Generate Layers
-            new GenerateLayers().GetLayers(voxels);
-            Debug.WriteLine("Generated Layers");
-            //Get Toolpath and Apply Infill
-            IInfill infill = new GridInfill();
-            toolpath = new NearestNeighborToolpath(voxels,infill).SplitLayers(voxels).GetPath();
-            Debug.WriteLine("Toolpath Generated");
-            Settings.SmoothingAngle = 0.2f;
-            Settings.SmoothingCount = 1;
-
-            toolpath = new SmoothPath().Process(toolpath);
-            Settings.SmoothingCount = 3;
-            Settings.SmoothingAngle = 0.75f;
-            toolpath = new SmoothPath().Process(toolpath);
-            toolpath = new PathFiller().Process(toolpath);
-            toolpath = new SafeTravel().Process(toolpath);
-            toolpath = new PurgeLine().Process(toolpath);
-            IsSlicing = false;
-            OnGCodeAvailabilityChanged?.Invoke();
+            catch (Exception e)
+            {
+                Debug.WriteLine($"Slicing failed: {e}");
+            }
+            finally
+            {
+                IsSlicing = false;
+                OnGCodeAvailabilityChanged?.Invoke();
+            }
         }
 
         internal static void SaveGCode(string path)

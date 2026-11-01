@@ -1,4 +1,4 @@
-using Models;
+﻿using Models;
 using System.Numerics;
 
 namespace CrystaliteSlicer.V2.Geometry
@@ -88,12 +88,15 @@ namespace CrystaliteSlicer.V2.Geometry
 
             var dir = p1 - p0;
             var inv = new Vector3(1 / dir.X, 1 / dir.Y, 1 / dir.Z);
-            var stack = new Stack<int>();
-            stack.Push(0);
+            // Called from several layers in parallel: traversal state stays on the stack. Median splits keep the
+            // tree depth near log2(triangles), far below the 256 entries this allows.
+            Span<int> stack = stackalloc int[256];
+            int top = 0;
+            stack[top++] = 0;
             bool hit = false;
-            while (stack.Count > 0)
+            while (top > 0)
             {
-                var node = nodes[stack.Pop()];
+                var node = nodes[stack[--top]];
                 if (!SegmentHitsBox(p0, inv, node.Min, node.Max, MathF.Min(t, 1)))
                 {
                     continue;
@@ -113,8 +116,8 @@ namespace CrystaliteSlicer.V2.Geometry
                 }
                 else
                 {
-                    stack.Push(node.Left);
-                    stack.Push(node.Right);
+                    stack[top++] = node.Left;
+                    stack[top++] = node.Right;
                 }
             }
             return hit;

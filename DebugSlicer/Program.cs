@@ -1,10 +1,8 @@
 ﻿using ConsoleTools;
-using CrystaliteSlicer.InfillGeneration;
-using CrystaliteSlicer.LayerGeneration;
+using CrystaliteSlicer.GcodeGeneration;
 using CrystaliteSlicer.MeshImport;
 using CrystaliteSlicer.Postprocessing;
-using CrystaliteSlicer.ToolpathGeneration;
-using CrystaliteSlicer.Voxelize;
+using CrystaliteSlicer.V2;
 using Models;
 using Newtonsoft.Json;
 using System.CodeDom.Compiler;
@@ -20,9 +18,6 @@ namespace DebugSlicer
         static void Main(string[] args)
         {
             LoadSettings();
-            Settings.SmoothingAngle = 0.0f;
-            Settings.SmoothingCount = 2;
-            Settings.OverhangOverlap = 0.0f;
 
             var ModelSettingsMenu = new ConsoleMenu()
                 .Add("Uniform Scale",() => { Settings.Scale = Vector3.One * ReadFloatMenu("Scale Multiplier"); SaveSettings(); })
@@ -38,8 +33,8 @@ namespace DebugSlicer
                 .Add("Back", (x) => x.CloseMenu());
 
             var QualitySettingsMenu = new ConsoleMenu()
-                .Add("Horizontal Resolution", () => { var res = ReadFloatMenu("Horizontal Resolution", 0.01f, Settings.NozzleDiameter); Settings.Resolution = new Vector3(res, res, Settings.Resolution.Z); })
-                .Add("Vertical Resolution", () => { Settings.Resolution = new Vector3(Settings.Resolution.X, Settings.Resolution.Y, ReadFloatMenu("Z Resolution", 0.01f, (MathF.Tan(Settings.MaxSlope * (MathF.PI / 180.0f)) * Settings.Resolution.X / Settings.Resolution.Z))); SaveSettings(); })
+                .Add("Horizontal Resolution", () => { var res = ReadFloatMenu("Horizontal Resolution", 0.05f, Settings.NozzleDiameter); Settings.Resolution = new Vector3(res, res, Settings.Resolution.Z); })
+                .Add("Vertical Resolution", () => { Settings.Resolution = new Vector3(Settings.Resolution.X, Settings.Resolution.Y, ReadFloatMenu("Min Layer Height", 0.02f, Settings.MaxLayerHeight * 0.5f)); SaveSettings(); })
                 .Add("Max Layer Height", ()=> { Settings.MaxLayerHeight = ReadFloatMenu("Max Layer Height", Settings.Resolution.Z * 1.01f, Settings.PrintVolume.Z); SaveSettings(); })
                 .Add("Back", (x)=> x.CloseMenu());
 
@@ -108,14 +103,17 @@ namespace DebugSlicer
         }
         private static void LoadSettings()
         {
-            if (File.Exists(Application.CommonAppDataPath + "/LastUsedSettings.json"))
+            var settingsFile = Application.CommonAppDataPath + "/LastUsedSettings.json";
+            var loaded = File.Exists(settingsFile) ? JsonConvert.DeserializeObject<Settings>(File.ReadAllText(settingsFile)) : null;
+            if (loaded != null)
             {
-                Settings.Instance = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(Application.CommonAppDataPath + "/LastUsedSettings.json"));
+                Settings.Instance = loaded;
             }
             else
             {
-                Settings.Instance = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(Application.StartupPath + "/DefaultEnder3.json"));
-                Console.WriteLine("Defaults loaded for a stock Ender3\nPlease make sure to check them before printing\n\nIf you encounter missing/incomplete areas, try reducing vertical resolution\nSupports aren't implemented yet, areas that overhang more than 90° will be ignored!\n\n[Press any button to continue]");
+                var defaults = Application.StartupPath + "/DefaultEnder3.json";
+                Settings.Instance = (File.Exists(defaults) ? JsonConvert.DeserializeObject<Settings>(File.ReadAllText(defaults)) : null) ?? new Settings();
+                Console.WriteLine("Defaults loaded for a stock Ender3\nPlease make sure to check them before printing\n\nSupports aren't implemented yet, areas that can't be reached from the bed are skipped!\n\n[Press any button to continue]");
                 Console.ReadKey();
                 SaveSettings();
             }
@@ -233,27 +231,17 @@ namespace DebugSlicer
                 return;
             }
             Console.WriteLine("Importing Mesh");
-            IEnumerable<Triangle> tris = new MeshImporter().ImportMesh(filePath).ApplyTransform().TransformedMesh;
-            Console.WriteLine("Voxelizing Mesh");
-            IVoxelCollection voxels = new Voxelizer().Voxelize(tris);
-            IInfill infillPattern = new GridInfill();
-            IGenerateToolpath toolpathGenerator = new NearestNeighborToolpath(voxels, infillPattern);
-            Console.WriteLine("Generating Layers");
-            MeasuredRun(() => new GenerateLayers().GetLayers(voxels), "\tLayer Generation");
-            IEnumerable<Line> toolpath = new List<Line>();
-            Console.WriteLine("Generating Toolpath");
-            MeasuredRun(() => ((NearestNeighborToolpath)toolpathGenerator).SplitLayers(voxels), "\tSplitting Layers");
-            MeasuredRun(() => toolpath = toolpathGenerator.GetPath(), "\tToolpath Generation");
-            //toolpath = new SlopeAlign().Process(toolpath);
-            Console.WriteLine("Post processing path");
-            toolpath = new SmoothPath().Process(toolpath);
-            Settings.SmoothingCount = 6;
-            Settings.SmoothingAngle = 0.75f;
-            toolpath = new SmoothPath().Process(toolpath);
-            toolpath = new PathFiller().Process(toolpath);
-            toolpath = new SafeTravel().Process(toolpath);
-            toolpath = new PurgeLine().Process(toolpath);
-            File.WriteAllLines(fileNoExtension+".gcode", JankGcodegenerator.GetGCode(toolpath.ToList()));
+            var tris = new MeshImporter().ImportMesh(filePath).ApplyTransform().TransformedMesh.ToList();
+            Console.WriteLine("Slicing");
+            SliceResult result = null!;
+            MeasuredRun(() => result = new VSlicer(SliceOptions.FromSettings()).Slice(tris), "\tSlicing");
+            Console.WriteLine($"\t{result.LayerCount} layers; {result.Timings}");
+            if (result.Stalled)
+            {
+                Console.WriteLine($"\tCould not print {result.UnprintedVolume:F1} of {result.ModelVolume:F1} mm³");
+            }
+            var toolpath = new PurgeLine().Process(result.Path).ToList();
+            File.WriteAllLines(fileNoExtension + ".gcode", new MarlinGCodeGenerator().GetGcode(toolpath));
             Console.WriteLine("\nThe gcode file has been exported to the same folder as the original file.\n\n[Press any key to continue]");
             Console.ReadKey();
         }

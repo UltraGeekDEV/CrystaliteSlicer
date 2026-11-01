@@ -1,4 +1,4 @@
-using Models;
+﻿using Models;
 using Models.GcodeInfo;
 using System;
 using System.Collections.Generic;
@@ -11,6 +11,19 @@ namespace CrystaliteSlicer.GcodeGeneration
 {
     public class MarlinGCodeGenerator : IConvertGcode
     {
+        /// <summary>Travels shorter than this (mm, summed over the whole move) do not retract.</summary>
+        public const double MinRetractTravel = 1.5;
+
+        private static double TravelLength(IList<Line> lines, int from)
+        {
+            double length = 0;
+            for (int i = from; i < lines.Count && (lines[i].Travel || lines[i] is InfoLine); i++)
+            {
+                if (!(lines[i] is InfoLine)) length += lines[i].Length();
+            }
+            return length;
+        }
+
         public List<string> GetGcode(IEnumerable<Line> toolpath)
         {
             List<string> ret = new List<string>();
@@ -50,8 +63,10 @@ namespace CrystaliteSlicer.GcodeGeneration
             bool prevTravel = lines.First().Travel;
             bool changePrintFeedRate = true;
             double curPrintFeedRate = wallFeedrate;
-            foreach (Line line in lines)
+            bool retracted = false;
+            for (int index = 0; index < lines.Count; index++)
             {
+                var line = lines[index];
                 if (line is NewLayerLine)
                 {
                     ret.Add($";LAYER:{layer++}");
@@ -89,7 +104,12 @@ namespace CrystaliteSlicer.GcodeGeneration
                     string move = $"G0 X{N(line.End.X)} Y{N(line.End.Y)} Z{N(line.End.Z)}";
                     if (!prevTravel)
                     {
-                        ret.Add($"G1 F{N(retractFeedrate)} E{N(extrusion - Settings.RetractionDistance)}");
+                        // Hops between neighbouring paths (zigzag ends, wall to wall) are not worth a retraction.
+                        retracted = TravelLength(lines, index) >= MinRetractTravel;
+                        if (retracted)
+                        {
+                            ret.Add($"G1 F{N(retractFeedrate)} E{N(extrusion - Settings.RetractionDistance)}");
+                        }
                         move += $" F{N(travelFeedrate)}";
                         prevTravel = true;
                     }
@@ -97,10 +117,11 @@ namespace CrystaliteSlicer.GcodeGeneration
                 }
                 else
                 {
-                    if (prevTravel)
+                    if (prevTravel && retracted)
                     {
                         extrusion += Settings.RetractionDistance * 0.05f;
                         ret.Add($"G1 F{N(retractFeedrate)} E{N(extrusion)}");
+                        retracted = false;
                     }
                     extrusion += line.Flow * line.Length() * extrusionConstant;
                     string move = $"G1 X{N(line.End.X)} Y{N(line.End.Y)} Z{N(line.End.Z)} E{N(extrusion)}";

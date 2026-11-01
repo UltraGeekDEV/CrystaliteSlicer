@@ -28,16 +28,21 @@ public class MainViewModel : ReactiveObject
     private void LoadSettings()
     {
         string settingsFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify), "Crystalite", "LastUsedSettings.json");
-        if (File.Exists(settingsFile))
+        try
         {
-            Settings.Instance = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(settingsFile));
+            if (File.Exists(settingsFile))
+            {
+                Settings.Instance = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(settingsFile)) ?? throw new InvalidDataException("Empty settings file");
+                return;
+            }
         }
-        else
+        catch (Exception e)
         {
-            var codeBase = Path.GetDirectoryName(Assembly.GetAssembly(GetType()).Location);
-            Settings.Instance = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(Path.Combine(codeBase, "Assets", "DefaultEnder3.json")));
-            Debug.WriteLine("Defaults loaded for a stock Ender3");
-            SaveSettings();
+            Debug.WriteLine($"Ignoring unreadable {settingsFile}: {e.Message}");
         }
+        var defaults = Path.Combine(AppContext.BaseDirectory, "Assets", "DefaultEnder3.json");
+        Settings.Instance = (File.Exists(defaults) ? JsonConvert.DeserializeObject<Settings>(File.ReadAllText(defaults)) : null) ?? new Settings();
+        Debug.WriteLine("Defaults loaded for a stock Ender3");
+        SaveSettings();
     }
 }

@@ -52,35 +52,35 @@ namespace Models
 
         //model settings -to be removed-
         public Vector3 rotation;
-        public Vector3 scale;
-        public Vector3 offset;
+        public Vector3 scale = Vector3.One;
+        public Vector3 offset = new Vector3(30, 30, 0);
 
         //printer settings
-        public Vector3 printVolume;
-        public float nozzleDiameter;
-        public float maxSlope;
-        public float maxLayerHeight;
+        public Vector3 printVolume = new Vector3(235, 235, 245);
+        public float nozzleDiameter = 0.4f;
+        public float maxSlope = 10;
+        public float maxLayerHeight = 0.32f;
 
         //print settings
-        public Vector3 resolution;
-        public float hotendTemp;
-        public float bedTemp;
-        public float fanSpeed;
-        public float extrusionMult;
-        public float outerWallSpeed;
-        public float innerWallSpeed;
-        public float infillSpeed;
-        public float infillDensity;
-        public float travelSpeed;
-        public int wallCount;
-        public float topThickness;
-        public float retractionDistance;
-        public float retractionSpeed;
+        public Vector3 resolution = new Vector3(0.2f, 0.2f, 0.05f);
+        public float hotendTemp = 200;
+        public float bedTemp = 50;
+        public float fanSpeed = 1;
+        public float extrusionMult = 1;
+        public float outerWallSpeed = 35;
+        public float innerWallSpeed = 35;
+        public float infillSpeed = 50;
+        public float infillDensity = 0.2f;
+        public float travelSpeed = 150;
+        public int wallCount = 3;
+        public float topThickness = 2;
+        public float retractionDistance = 4;
+        public float retractionSpeed = 45;
 
         //toolpath settings
         public float pheromoneWeight;
-        public float smoothingAngle;
-        public int smoothingCount;
+        public float smoothingAngle = 0.75f;
+        public int smoothingCount = 6;
         public float overhangOverlap;
 
         //timelapse settings

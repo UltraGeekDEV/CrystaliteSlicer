@@ -15,7 +15,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         AddHandler(DragDrop.DropEvent, Drop);
-        InitializeComponent(true,true);
+        InitializeComponent(); // the (loadXaml, attachDevTools) overload only exists in Debug builds
         instance = this;
     }
     private void Drop(object? sender, DragEventArgs e)

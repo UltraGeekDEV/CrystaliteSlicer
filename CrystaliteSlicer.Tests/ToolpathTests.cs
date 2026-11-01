@@ -1,4 +1,4 @@
-using CrystaliteSlicer.V2;
+﻿using CrystaliteSlicer.V2;
 using CrystaliteSlicer.V2.Toolpath;
 using Models;
 using System.Numerics;
@@ -93,6 +93,38 @@ namespace CrystaliteSlicer.Tests
                 Assert.All(noWall, l => Assert.Contains(l.paths, p => p.Role == PathRole.Skin));
                 Assert.True(noWall.Count <= layers.Count / 10);
             }
+        }
+
+        [Theory]
+        [InlineData(0.3f, 0.75f)]  // fin thinner than one line: nothing but gap fill can print it
+        [InlineData(1.0f, 0.5f)]   // one wall loop fits, leaving a 0.2 mm strip down the middle
+        public void ThinWallsAreFilledWithANarrowerLine(float thickness, float expectedFactor)
+        {
+            var layers = Run(TestMeshes.Box(new Vector3(50, 50, 0), new Vector3(60, 50 + thickness, 3)), out var result);
+            Assert.False(result.Stalled);
+            foreach (var (layer, paths) in layers)
+            {
+                var gap = paths.Where(p => p.Role == PathRole.GapFill).ToList();
+                float length = gap.Sum(p => p.Points.Zip(p.Points.Skip(1), Vector2.Distance).Sum());
+                var factors = gap.SelectMany(p => p.WidthFactors!).ToList();
+                output.WriteLine($"layer {layer}: {gap.Count} gap fills, {length:F2} mm, width factor {factors.DefaultIfEmpty().Average():F2}");
+                Assert.InRange(length, 8.5f, 10.5f);
+                Assert.All(gap, p => Assert.All(p.Points, q => Assert.InRange(q.Y, 50 + 0.5f * thickness - 0.06f, 50 + 0.5f * thickness + 0.06f)));
+                Assert.InRange(factors.Average(), expectedFactor - 0.15f, expectedFactor + 0.15f);
+            }
+        }
+
+        [Fact]
+        public void SkinIsLaidInAFewZigzagsNotOneLinePerHatch()
+        {
+            var layers = Run(TestMeshes.Box(new Vector3(50, 50, 0), new Vector3(60, 60, 3)), out _);
+            foreach (var (layer, paths) in layers)
+            {
+                int skin = paths.Count(p => p.Role == PathRole.Skin);
+                output.WriteLine($"layer {layer}: {skin} skin paths");
+                Assert.InRange(skin, 0, 3); // ~30 hatch lines per layer otherwise
+            }
+            Assert.Contains(layers, l => l.paths.Any(p => p.Role == PathRole.Skin));
         }
     }
 }

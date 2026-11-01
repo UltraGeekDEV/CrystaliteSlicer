@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AvaloniaResource Remove="Assets\DefaultEnder3.json" />
     <AvaloniaResource Remove="Assets\Models\Arrow.stl" />
     <AvaloniaResource Remove="Assets\Models\RotationAxis.stl" />
     <AvaloniaResource Remove="Assets\Shaders\BuildPlate.frag" />
@@ -66,6 +67,9 @@
     <AvaloniaResource Update="Assets\Brushes.axaml">
       <SubType>Designer</SubType>
     </AvaloniaResource>
+    <None Update="Assets\DefaultEnder3.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Assets\Models\RotationAxis.stl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

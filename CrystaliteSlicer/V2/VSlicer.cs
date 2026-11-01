@@ -1,4 +1,4 @@
-using CrystaliteSlicer.V2.Dexels;
+﻿using CrystaliteSlicer.V2.Dexels;
 using CrystaliteSlicer.V2.Geometry;
 using CrystaliteSlicer.V2.Planning;
 using CrystaliteSlicer.V2.Toolpath;
@@ -33,6 +33,7 @@ namespace CrystaliteSlicer.V2
                 {
                     MaxLayerHeight = hMax,
                     MinLayerHeight = hMin,
+                    PreferredLayerHeight = MathF.Max(hMin, 0.6f * hMax),
                     Slope = MathF.Tan(Math.Clamp(Settings.MaxSlope, 0, 60) * MathF.PI / 180),
                     SupportDistance = MathF.Max(cell, (1 - Math.Clamp(Settings.OverhangOverlap, 0, 0.9f)) * w),
                 },
@@ -89,29 +90,49 @@ namespace CrystaliteSlicer.V2
 
             var planner = new LayerPlanner(grid, options.Planner);
             var builder = new LayerToolpathBuilder(grid, bvh, options.Toolpath);
+            // The planner runs ahead by up to a batch; travels must only avoid what is printed by then.
+            var printed = new ClearanceField(grid.NX, grid.NY, options.Planner.Slope * grid.CellSize);
             var output = new List<Line>();
             Vector3? position = null;
             int layers = 0;
             long tPlan = 0, tBuild = 0, tEmit = 0;
+            int batchSize = Math.Max(4, Environment.ProcessorCount);
+            var batch = new List<LayerPlan>(batchSize);
 
             while (true)
             {
+                // Planning is sequential; outlines and paths of planned layers are independent of each other.
                 long t0 = sw.ElapsedMilliseconds;
-                var plan = planner.NextLayer();
+                batch.Clear();
+                LayerPlan? plan;
+                while (batch.Count < batchSize && (plan = planner.NextLayer()) != null)
+                {
+                    batch.Add(plan);
+                }
                 long t1 = sw.ElapsedMilliseconds;
                 tPlan += t1 - t0;
-                if (plan == null) break;
+                if (batch.Count == 0) break;
 
-                var surface = builder.BuildSurface(plan);
-                var paths = builder.BuildPaths(plan, surface);
+                var built = new (LayerSurface surface, List<LayerPath> paths)[batch.Count];
+                Parallel.For(0, batch.Count, i =>
+                {
+                    var surface = builder.BuildSurface(batch[i]);
+                    built[i] = (surface, builder.BuildPaths(batch[i], surface));
+                });
                 long t2 = sw.ElapsedMilliseconds;
                 tBuild += t2 - t1;
-                onLayer?.Invoke(plan, surface, paths);
-                if (paths.Count == 0) continue;
 
-                output.Add(new NewLayerLine());
-                EmitLayer(output, paths, surface, planner, ref position);
-                layers++;
+                for (int i = 0; i < batch.Count; i++)
+                {
+                    var (surface, paths) = built[i];
+                    printed.Add(batch[i]);
+                    onLayer?.Invoke(batch[i], surface, paths);
+                    if (paths.Count == 0) continue;
+
+                    output.Add(new NewLayerLine());
+                    EmitLayer(output, paths, surface, grid, printed, ref position);
+                    layers++;
+                }
                 tEmit += sw.ElapsedMilliseconds - t2;
             }
 
@@ -127,9 +148,9 @@ namespace CrystaliteSlicer.V2
             };
         }
 
-        private static readonly PathRole[] RoleOrder = { PathRole.InnerWall, PathRole.OuterWall, PathRole.Skin, PathRole.Infill };
+        private static readonly PathRole[] RoleOrder = { PathRole.InnerWall, PathRole.OuterWall, PathRole.GapFill, PathRole.Skin, PathRole.Infill };
 
-        private void EmitLayer(List<Line> output, List<LayerPath> paths, LayerSurface surface, LayerPlanner planner, ref Vector3? position)
+        private void EmitLayer(List<Line> output, List<LayerPath> paths, LayerSurface surface, DexelGrid grid, ClearanceField printed, ref Vector3? position)
         {
             foreach (var role in RoleOrder)
             {
@@ -140,7 +161,7 @@ namespace CrystaliteSlicer.V2
                 output.Add(role switch
                 {
                     PathRole.OuterWall => new WallLine(),
-                    PathRole.InnerWall => new InnerWallLine(),
+                    PathRole.InnerWall or PathRole.GapFill => new InnerWallLine(),
                     PathRole.Skin => new SkinLine(),
                     _ => new InfillLine(),
                 });
@@ -173,25 +194,32 @@ namespace CrystaliteSlicer.V2
                     var chosen = remaining[bestPath];
                     remaining.RemoveAt(bestPath);
                     var ordered = new List<Vector2>();
+                    var widths = chosen.WidthFactors == null ? null : new List<float>();
                     if (chosen.Closed)
                     {
                         for (int k = 0; k <= chosen.Points.Count; k++)
                         {
                             ordered.Add(chosen.Points[(bestPoint + k) % chosen.Points.Count]);
+                            widths?.Add(chosen.WidthFactors![(bestPoint + k) % chosen.Points.Count]);
                         }
                     }
                     else
                     {
                         ordered.AddRange(chosen.Points);
-                        if (reverse) ordered.Reverse();
+                        widths?.AddRange(chosen.WidthFactors!);
+                        if (reverse)
+                        {
+                            ordered.Reverse();
+                            widths?.Reverse();
+                        }
                     }
 
-                    var lifted = Lift(ordered, surface);
+                    var lifted = Lift(ordered, widths, surface);
                     if (lifted.Count < 2) continue;
                     var start = lifted[0].pos;
                     if (position.HasValue)
                     {
-                        Travel(output, position.Value, start, planner);
+                        Travel(output, position.Value, start, grid, printed.Clearance);
                     }
                     for (int k = 1; k < lifted.Count; k++)
                     {
@@ -203,9 +231,13 @@ namespace CrystaliteSlicer.V2
             }
         }
 
-        /// <summary>Resample a 2D path onto the layer's top surface, then drop points a straight 3D segment covers.</summary>
-        private List<(Vector3 pos, float thickness)> Lift(List<Vector2> pts, LayerSurface surface)
+        /// <summary>
+        /// Resample a 2D path onto the layer's top surface, then drop points a straight 3D segment covers.
+        /// "thickness" is the bead's cross-section in units of a full-width bead: layer thickness × width factor.
+        /// </summary>
+        private List<(Vector3 pos, float thickness)> Lift(List<Vector2> pts, List<float>? widths, LayerSurface surface)
         {
+            float Width(int k, float t) => widths == null ? 1 : widths[k - 1] + (widths[k] - widths[k - 1]) * t;
             var dense = new List<(Vector3 pos, float thickness)>();
             float step = surface.Cell;
             for (int k = 0; k < pts.Count; k++)
@@ -218,10 +250,10 @@ namespace CrystaliteSlicer.V2
                     for (int s = 1; s < pieces; s++)
                     {
                         var p = Vector2.Lerp(a, b, s / (float)pieces);
-                        dense.Add((new Vector3(p, surface.SampleTop(p)), surface.SampleThickness(p)));
+                        dense.Add((new Vector3(p, surface.SampleTop(p)), surface.SampleThickness(p) * Width(k, s / (float)pieces)));
                     }
                 }
-                dense.Add((new Vector3(pts[k], surface.SampleTop(pts[k])), surface.SampleThickness(pts[k])));
+                dense.Add((new Vector3(pts[k], surface.SampleTop(pts[k])), surface.SampleThickness(pts[k]) * (widths?[k] ?? 1)));
             }
 
             var simplified = new List<(Vector3 pos, float thickness)> { dense[0] };
@@ -238,6 +270,8 @@ namespace CrystaliteSlicer.V2
             return simplified;
         }
 
+        private const float XyTolerance = 0.005f, ZTolerance = 0.01f, ThicknessTolerance = 0.015f;
+
         private static bool Covers(List<(Vector3 pos, float thickness)> pts, int from, int to)
         {
             var a = pts[from].pos;
@@ -248,18 +282,18 @@ namespace CrystaliteSlicer.V2
             {
                 var p = pts[k].pos;
                 float t = len2 > 0 ? Math.Clamp(Vector3.Dot(p - a, ab) / len2, 0, 1) : 0;
-                if (Vector3.DistanceSquared(a + ab * t, p) > 0.003f * 0.003f) return false;
+                var off = a + ab * t - p;
+                // Tight in XY (wall accuracy), looser in Z: a few Z steps of a typical leadscrew, and ~5% flow.
+                if (off.X * off.X + off.Y * off.Y > XyTolerance * XyTolerance || MathF.Abs(off.Z) > ZTolerance) return false;
                 float expected = pts[from].thickness + (pts[to].thickness - pts[from].thickness) * t;
-                if (MathF.Abs(pts[k].thickness - expected) > 0.01f) return false;
+                if (MathF.Abs(pts[k].thickness - expected) > ThicknessTolerance) return false;
             }
             return true;
         }
 
         /// <summary>Travel that never goes below the clearance of anything printed so far.</summary>
-        private void Travel(List<Line> output, Vector3 from, Vector3 to, LayerPlanner planner)
+        private void Travel(List<Line> output, Vector3 from, Vector3 to, DexelGrid grid, float[] clearance)
         {
-            var grid = planner.Grid;
-            var clearance = planner.Clearance;
             var a = new Vector2(from.X, from.Y);
             var b = new Vector2(to.X, to.Y);
             float length = Vector2.Distance(a, b);

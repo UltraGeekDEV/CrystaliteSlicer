@@ -30,7 +30,7 @@
   "hotendTemp": 200.0,
   "bedTemp": 50.0,
   "fanSpeed": 1.0,
-  "extrusionMult": 0.0,
+  "extrusionMult": 1.0,
   "outerWallSpeed": 35.0,
   "innerWallSpeed": 35.0,
   "infillSpeed": 50.0,

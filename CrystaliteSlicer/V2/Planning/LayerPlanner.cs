@@ -1,4 +1,4 @@
-using CrystaliteSlicer.V2.Dexels;
+﻿using CrystaliteSlicer.V2.Dexels;
 
 namespace CrystaliteSlicer.V2.Planning
 {
@@ -8,6 +8,12 @@ namespace CrystaliteSlicer.V2.Planning
         public float MaxLayerHeight { get; set; } = 0.3f;
         /// <summary>Thinnest layer worth printing, except when finishing an exact top surface (mm).</summary>
         public float MinLayerHeight { get; set; } = 0.05f;
+        /// <summary>
+        /// Thinnest bead a column prefers to wait for when it is held down by material that has not started yet
+        /// (e.g. behind an overhang that spreads outward one bead per layer): it sits out until it can lay this
+        /// much instead of creeping up a few hundredths per layer. Falls back to MinLayerHeight when nothing could print.
+        /// </summary>
+        public float PreferredLayerHeight { get; set; } = 0.2f;
         /// <summary>tan of the nozzle clearance angle: how much higher material may be per mm of distance.</summary>
         public float Slope { get; set; } = MathF.Tan(10 * MathF.PI / 180);
         /// <summary>How far sideways a layer may grow from printed material (mm).</summary>
@@ -45,15 +51,20 @@ namespace CrystaliteSlicer.V2.Planning
         private readonly PlannerSettings settings;
         private readonly int nx, ny;
         private readonly float slopePerCell;
+        /// <summary>
+        /// Slightly steeper-than-needed cone for the in-layer surface: nearest-source propagation is off by a few
+        /// tenths of a percent over long distances, which waiting columns (large in-layer height steps) expose.
+        /// </summary>
+        private readonly float layerSlopePerCell;
         private readonly (int dx, int dy)[] supportStencil;
 
         private readonly float[] printedTop;
         /// <summary>Intervals that can never print: the clearance of neighbouring material is already above them.</summary>
         private readonly bool[] blocked;
         private readonly int[] current;
+        private readonly ClearanceField field;
         private readonly float[] printedHeight;
         private readonly float[] clearance;
-        private readonly int[] clearanceSource;
 
         private readonly bool[] inProgressFlag;
         private List<int> inProgress = new();
@@ -61,6 +72,7 @@ namespace CrystaliteSlicer.V2.Planning
         private List<int> watch = new();
         private readonly float[] upper;
         private readonly bool[] activeMark;
+        private readonly bool[] pendingMark;
 
         private int layerIndex;
 
@@ -83,22 +95,21 @@ namespace CrystaliteSlicer.V2.Planning
             ny = grid.NY;
             int n = nx * ny;
             slopePerCell = settings.Slope * grid.CellSize;
+            layerSlopePerCell = 0.99f * slopePerCell;
             supportStencil = ConeTransform.DiskStencil(Math.Max(1, settings.SupportDistance / grid.CellSize));
 
             printedTop = new float[grid.IntervalTotal];
             Array.Fill(printedTop, float.NaN);
             blocked = new bool[grid.IntervalTotal];
             current = new int[n];
-            printedHeight = new float[n];
-            clearance = new float[n];
-            clearanceSource = new int[n];
-            Array.Fill(printedHeight, float.NegativeInfinity);
-            Array.Fill(clearance, float.NegativeInfinity);
-            Array.Fill(clearanceSource, -1);
+            field = new ClearanceField(nx, ny, slopePerCell);
+            printedHeight = field.Height;
+            clearance = field.Clearance;
             inProgressFlag = new bool[n];
             watchFlag = new bool[n];
             upper = new float[n];
             activeMark = new bool[n];
+            pendingMark = new bool[n];
             Array.Fill(upper, float.PositiveInfinity);
 
             for (int col = 0; col < n; col++)
@@ -278,15 +289,19 @@ namespace CrystaliteSlicer.V2.Planning
             // Columns that cannot print a good bead this layer sit it out but stay sources of the cone, so no
             // neighbour can outrun them and block them for good. If that leaves nothing printable, retry
             // without the waiting intervals' caps (a truly unprintable feature would hold everything), and as a last resort
-            // drop non-printing columns as sources one round at a time.
-            for (int attempt = 0; attempt < 3; attempt++)
+            // drop non-printing columns as sources one round at a time. The first attempt also makes columns that a
+            // waiting interval or an overhang front holds to less than PreferredLayerHeight wait for a thicker bead. (Only those: making
+            // every thin column wait splits ordinary sloped layers into out-of-phase groups.)
+            float preferred = MathF.Max(settings.MinLayerHeight, MathF.Min(settings.PreferredLayerHeight, settings.MaxLayerHeight));
+            for (int attempt = 0; attempt < 4; attempt++)
             {
                 Array.Copy(candidates, alive, alive.Length);
-                if (attempt == 1)
+                float minThickness = attempt == 0 ? preferred : settings.MinLayerHeight;
+                if (attempt == 2)
                 {
                     foreach (int col in pending) upper[col] = float.PositiveInfinity;
                 }
-                for (int round = 0; round < (attempt == 2 ? 64 : 1); round++)
+                for (int round = 0; round < (attempt == 3 ? 64 : 1); round++)
                 {
                     for (int j = 0; j < h; j++)
                     {
@@ -296,7 +311,17 @@ namespace CrystaliteSlicer.V2.Planning
                     // forces every layer flat), and using it only for clearance lets a neighbour legally climb
                     // past a column that sat out one layer, blocking it for good. The nozzle face may therefore
                     // touch up to Slope * face radius (~0.035 mm at 10° and a 0.4 mm nozzle) above its tip.
-                    ConeTransform.ConeMin(localU, w, h, slopePerCell, localT, localBest);
+                    ConeTransform.ConeMin(localU, w, h, layerSlopePerCell, localT, localBest);
+                    if (attempt == 0)
+                    {
+                        // Waiting intervals and overhang fronts (first beads off the bed) are what hold columns down.
+                        foreach (int col in pending) pendingMark[col] = true;
+                        foreach (int col in active)
+                        {
+                            int k = current[col];
+                            if (!Started(k) && !OnBed(grid.ZIn[k])) pendingMark[col] = true;
+                        }
+                    }
 
                     bool removed = false;
                     for (int a = 0; a < active.Count; a++)
@@ -305,18 +330,23 @@ namespace CrystaliteSlicer.V2.Planning
                         int col = active[a], k = current[col];
                         float top = localT[(col % nx - x0) + (col / nx - y0) * w];
                         bool finishing = top >= grid.ZOut[k] - Eps;
+                        int source = localBest[(col % nx - x0) + (col / nx - y0) * w];
+                        bool heldByPending = source >= 0 && pendingMark[x0 + source % w + (y0 + source / w) * nx];
+                        float needed = heldByPending ? minThickness : settings.MinLayerHeight;
                         alive[a] = top >= clearance[col] - 1e-4f
                             && top > bottom[a] + Eps
-                            && (top - bottom[a] >= settings.MinLayerHeight - Eps || finishing);
-                        if (!alive[a] && attempt == 2)
+                            && (top - bottom[a] >= needed - Eps || finishing);
+                        if (!alive[a] && attempt == 3)
                         {
                             upper[col] = float.PositiveInfinity;
                             removed = true;
                         }
                     }
+                    foreach (int col in pending) pendingMark[col] = false;
+                    foreach (int col in active) pendingMark[col] = false;
                     if (!removed) break;
                 }
-                if (alive.Any(x => x)) { if (attempt > 0) FallbackLayers++; break; }
+                if (alive.Any(x => x)) { if (attempt > 1) FallbackLayers++; break; }
             }
 
             var columns = new List<int>();
@@ -390,7 +420,7 @@ namespace CrystaliteSlicer.V2.Planning
                 }
             }
 
-            UpdateClearance(touched);
+            field.Update(touched);
 
             return new LayerPlan
             {
@@ -404,49 +434,6 @@ namespace CrystaliteSlicer.V2.Planning
                 MinJ = minJ,
                 MaxJ = maxJ,
             };
-        }
-
-        /// <summary>
-        /// Clearance(p) = max_q printedHeight(q) - slope*|p-q|, kept up to date incrementally: only columns whose
-        /// height rose are re-propagated, and propagation stops where the cone falls below the old value.
-        /// </summary>
-        private void UpdateClearance(List<int> changedColumns)
-        {
-            var queue = new Queue<int>();
-            foreach (int p in changedColumns)
-            {
-                if (printedHeight[p] > clearance[p])
-                {
-                    clearance[p] = printedHeight[p];
-                    clearanceSource[p] = p;
-                    queue.Enqueue(p);
-                }
-            }
-
-            while (queue.Count > 0)
-            {
-                int p = queue.Dequeue();
-                int s = clearanceSource[p];
-                int si = s % nx, sj = s / nx;
-                int pi = p % nx, pj = p / nx;
-                for (int dy = -1; dy <= 1; dy++)
-                {
-                    for (int dx = -1; dx <= 1; dx++)
-                    {
-                        int i = pi + dx, j = pj + dy;
-                        if ((dx == 0 && dy == 0) || i < 0 || j < 0 || i >= nx || j >= ny) continue;
-                        float ddx = i - si, ddy = j - sj;
-                        float candidate = printedHeight[s] - slopePerCell * MathF.Sqrt(ddx * ddx + ddy * ddy);
-                        int q = i + j * nx;
-                        if (candidate > clearance[q] + 1e-6f)
-                        {
-                            clearance[q] = candidate;
-                            clearanceSource[q] = s;
-                            queue.Enqueue(q);
-                        }
-                    }
-                }
-            }
         }
 
         private LayerPlan? Finish()

@@ -6,6 +6,8 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <!-- Slicing builds layers in parallel and allocates heavily; workstation GC serialises it (~2x slower). -->
+    <ServerGarbageCollection>true</ServerGarbageCollection>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
